@@ -9,26 +9,31 @@
 #include <vector>
 
 // Print a list of strings.
-auto
-operator<< (std::ostream& o, const std::vector<std::string>& ss)
+auto operator<<(
+  std::ostream& o,
+  const std::vector<int>& ss)
   -> std::ostream&
 {
-  o << '{';
-  const char *sep = "";
+  o << '[';
 
-  for (const auto& s: ss)
-    {
-      o << sep << s;
-      sep = ", ";
-    }
+  bool first = true;
+  for (const auto& s: ss) {
+    if (!first) o << ", ";
+    o << s;
+    first = false;
+  }
 
-  return o << '}';
+  return o << ']';
 }
+
+using std::endl;
 
 %}
 
-%token YYEOF
+%token END 0
 %token <int> NUMBER
+%nterm <std::vector<int>> list;
+%nterm <int> item;
 
 %code
 {
@@ -39,26 +44,28 @@ operator<< (std::ostream& o, const std::vector<std::string>& ss)
     {
       static int count = 0;
       int stage = count++;
-      return stage > 10 ? parser::make_YYEOF() : parser::make_NUMBER(stage);
+      return stage > 10 ? parser::make_END() : parser::make_NUMBER(stage);
     }
 
     // Report an error to the user.
     auto parser::error(const std::string& msg) -> void
     {
-      std::cerr << msg << '\n';
+      std::cerr << "ERROR " << msg << endl;
     }
   }
 }
 
 %% /* Grammar rules and actions follow */
 
-result:
-  list  { std::cout << $1 << '\n'; }
+result: list    { std::cout << "!!!! " << $1 << endl; }
 ;
 
 
-%nterm <std::vector<std::string>> list;
-list: %empty     { /* Generates an empty string list */ }
+list: %empty    { $$ = {}; }
+    | list item { $$ = $1; $$.emplace_back($2); }
+;
+
+item: NUMBER
 ;
 
 %% 
