@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
 
-bison polish.y
+set -e
+set -u
 
+bison polish.y
+cc polish.tab.c -lm -o polish

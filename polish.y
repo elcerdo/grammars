@@ -5,6 +5,9 @@
 %{
 #define YYSTYPE double
 #include <math.h>
+#include <ctype.h>
+#include <stdio.h>
+
 %}
 
 %token NUM
@@ -37,10 +40,6 @@ exp:      NUM             { $$ = $1;         }
    character read if not a number.  Skips all blanks
    and tabs, returns 0 for EOF. */
 
-#include <ctype.h>
-
-#include <stdio.h>
-
 yyerror (s)  /* Called by yyparse on error */
      char *s;
 {
@@ -70,8 +69,7 @@ yylex ()
 
 int main(int argc, char* argv[])
 {
-	using namespace std;
-	cout << "coucou" << endl;
+  yyparse ();
 }
 
 

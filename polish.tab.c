@@ -70,8 +70,11 @@
 
 #define YYSTYPE double
 #include <math.h>
+#include <ctype.h>
+#include <stdio.h>
 
-#line 75 "polish.tab.c" /* yacc.c:337  */
+
+#line 78 "polish.tab.c" /* yacc.c:337  */
 # ifndef YY_NULLPTR
 #  if defined __cplusplus
 #   if 201103L <= __cplusplus
@@ -412,8 +415,8 @@ static const yytype_uint8 yytranslate[] =
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_uint8 yyrline[] =
 {
-       0,    14,    14,    15,    18,    19,    22,    23,    24,    25,
-      26,    28,    30
+       0,    17,    17,    18,    21,    22,    25,    26,    27,    28,
+      29,    31,    33
 };
 #endif
 
@@ -1196,55 +1199,55 @@ yyreduce:
   switch (yyn)
     {
         case 5:
-#line 19 "polish.y" /* yacc.c:1652  */
+#line 22 "polish.y" /* yacc.c:1652  */
     { printf ("\t%.10g\n", yyvsp[-1]); }
-#line 1202 "polish.tab.c" /* yacc.c:1652  */
+#line 1205 "polish.tab.c" /* yacc.c:1652  */
     break;
 
   case 6:
-#line 22 "polish.y" /* yacc.c:1652  */
+#line 25 "polish.y" /* yacc.c:1652  */
     { yyval = yyvsp[0];         }
-#line 1208 "polish.tab.c" /* yacc.c:1652  */
+#line 1211 "polish.tab.c" /* yacc.c:1652  */
     break;
 
   case 7:
-#line 23 "polish.y" /* yacc.c:1652  */
+#line 26 "polish.y" /* yacc.c:1652  */
     { yyval = yyvsp[-2] + yyvsp[-1];    }
-#line 1214 "polish.tab.c" /* yacc.c:1652  */
+#line 1217 "polish.tab.c" /* yacc.c:1652  */
     break;
 
   case 8:
-#line 24 "polish.y" /* yacc.c:1652  */
+#line 27 "polish.y" /* yacc.c:1652  */
     { yyval = yyvsp[-2] - yyvsp[-1];    }
-#line 1220 "polish.tab.c" /* yacc.c:1652  */
+#line 1223 "polish.tab.c" /* yacc.c:1652  */
     break;
 
   case 9:
-#line 25 "polish.y" /* yacc.c:1652  */
+#line 28 "polish.y" /* yacc.c:1652  */
     { yyval = yyvsp[-2] * yyvsp[-1];    }
-#line 1226 "polish.tab.c" /* yacc.c:1652  */
+#line 1229 "polish.tab.c" /* yacc.c:1652  */
     break;
 
   case 10:
-#line 26 "polish.y" /* yacc.c:1652  */
+#line 29 "polish.y" /* yacc.c:1652  */
     { yyval = yyvsp[-2] / yyvsp[-1];    }
-#line 1232 "polish.tab.c" /* yacc.c:1652  */
+#line 1235 "polish.tab.c" /* yacc.c:1652  */
     break;
 
   case 11:
-#line 28 "polish.y" /* yacc.c:1652  */
+#line 31 "polish.y" /* yacc.c:1652  */
     { yyval = pow (yyvsp[-2], yyvsp[-1]); }
-#line 1238 "polish.tab.c" /* yacc.c:1652  */
+#line 1241 "polish.tab.c" /* yacc.c:1652  */
     break;
 
   case 12:
-#line 30 "polish.y" /* yacc.c:1652  */
+#line 33 "polish.y" /* yacc.c:1652  */
     { yyval = -yyvsp[-1];        }
-#line 1244 "polish.tab.c" /* yacc.c:1652  */
+#line 1247 "polish.tab.c" /* yacc.c:1652  */
     break;
 
 
-#line 1248 "polish.tab.c" /* yacc.c:1652  */
+#line 1251 "polish.tab.c" /* yacc.c:1652  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires
@@ -1475,7 +1478,7 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 32 "polish.y" /* yacc.c:1918  */
+#line 35 "polish.y" /* yacc.c:1918  */
 
 
 
@@ -1483,10 +1486,6 @@ yyreturn:
    number on the stack and the token NUM, or the ASCII
    character read if not a number.  Skips all blanks
    and tabs, returns 0 for EOF. */
-
-#include <ctype.h>
-
-#include <stdio.h>
 
 yyerror (s)  /* Called by yyparse on error */
      char *s;
@@ -1517,8 +1516,7 @@ yylex ()
 
 int main(int argc, char* argv[])
 {
-	using namespace std;
-	cout << "coucou" << endl;
+  yyparse ();
 }
 
 
