@@ -42,7 +42,6 @@
 #include <iostream>
 #include <vector>
 
-
 // Print a list of strings.
 auto
 operator<< (std::ostream& o, const std::vector<std::string>& ss)
@@ -61,7 +60,7 @@ operator<< (std::ostream& o, const std::vector<std::string>& ss)
 }
 
 
-#line 65 "aaa.tab.cc" // lalr1.cc:429
+#line 64 "aaa.tab.cc" // lalr1.cc:429
 
 
 
@@ -178,7 +177,7 @@ operator<< (std::ostream& o, const std::vector<std::string>& ss)
 
 
 namespace yy {
-#line 182 "aaa.tab.cc" // lalr1.cc:431
+#line 181 "aaa.tab.cc" // lalr1.cc:431
 
 
 
@@ -402,7 +401,8 @@ namespace yy {
     {
       enum yytokentype
       {
-        NUMBER = 258
+        YYEOF = 258,
+        NUMBER = 259
       };
     };
 
@@ -498,11 +498,11 @@ namespace yy {
         // Type destructor.
 switch (yytype)
     {
-      case 3: // NUMBER
+      case 4: // NUMBER
         value.template destroy< int > ();
         break;
 
-      case 6: // list
+      case 7: // list
         value.template destroy< std::vector<std::string> > ();
         break;
 
@@ -582,13 +582,13 @@ switch (yytype)
       symbol_type (int tok)
         : super_type(token_type (tok))
       {
-        YYASSERT (tok == 0);
+        YYASSERT (tok == 0 || tok == token::YYEOF);
       }
 #else
       symbol_type (int tok)
         : super_type(token_type (tok))
       {
-        YYASSERT (tok == 0);
+        YYASSERT (tok == 0 || tok == token::YYEOF);
       }
 #endif
 #if 201103L <= YY_CPLUSPLUS
@@ -640,6 +640,21 @@ switch (yytype)
     void error (const syntax_error& err);
 
     // Implementation of make_symbol for each symbol type.
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_YYEOF ()
+      {
+        return symbol_type (token::YYEOF);
+      }
+#else
+      static
+      symbol_type
+      make_YYEOF ()
+      {
+        return symbol_type (token::YYEOF);
+      }
+#endif
 #if 201103L <= YY_CPLUSPLUS
       static
       symbol_type
@@ -963,7 +978,7 @@ switch (yytype)
       yyfinal_ = 3, ///< Termination state number.
       yyterror_ = 1,
       yyerrcode_ = 256,
-      yyntokens_ = 4  ///< Number of tokens.
+      yyntokens_ = 5  ///< Number of tokens.
     };
 
 
@@ -1003,9 +1018,9 @@ switch (yytype)
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-       2,     2,     2,     2,     2,     2,     1,     2,     3
+       2,     2,     2,     2,     2,     2,     1,     2,     3,     4
     };
-    const unsigned user_token_number_max_ = 258;
+    const unsigned user_token_number_max_ = 259;
     const token_number_type undef_token_ = 2;
 
     if (static_cast<int> (t) <= yyeof_)
@@ -1025,11 +1040,11 @@ switch (yytype)
   {
     switch (this->type_get ())
     {
-      case 3: // NUMBER
+      case 4: // NUMBER
         value.move< int > (std::move (that.value));
         break;
 
-      case 6: // list
+      case 7: // list
         value.move< std::vector<std::string> > (std::move (that.value));
         break;
 
@@ -1047,11 +1062,11 @@ switch (yytype)
   {
     switch (this->type_get ())
     {
-      case 3: // NUMBER
+      case 4: // NUMBER
         value.copy< int > (YY_MOVE (that.value));
         break;
 
-      case 6: // list
+      case 7: // list
         value.copy< std::vector<std::string> > (YY_MOVE (that.value));
         break;
 
@@ -1077,11 +1092,11 @@ switch (yytype)
     super_type::move (s);
     switch (this->type_get ())
     {
-      case 3: // NUMBER
+      case 4: // NUMBER
         value.move< int > (YY_MOVE (s.value));
         break;
 
-      case 6: // list
+      case 7: // list
         value.move< std::vector<std::string> > (YY_MOVE (s.value));
         break;
 
@@ -1140,14 +1155,14 @@ switch (yytype)
     const unsigned short
     yytoken_number_[] =
     {
-       0,   256,   257,   258
+       0,   256,   257,   258,   259
     };
     return token_type (yytoken_number_[type]);
   }
 
 
 } // yy
-#line 1151 "aaa.tab.cc" // lalr1.cc:431
+#line 1166 "aaa.tab.cc" // lalr1.cc:431
 
 
 
@@ -1164,7 +1179,7 @@ switch (yytype)
     {
       static int count = 0;
       int stage = count++;
-      return parser::make_NUMBER(stage);
+      return stage > 10 ? parser::make_YYEOF() : parser::make_NUMBER(stage);
     }
 
     // Report an error to the user.
@@ -1174,7 +1189,7 @@ switch (yytype)
     }
   }
 
-#line 1178 "aaa.tab.cc" // lalr1.cc:435
+#line 1193 "aaa.tab.cc" // lalr1.cc:435
 
 
 #ifndef YY_
@@ -1250,7 +1265,7 @@ switch (yytype)
 
 
 namespace yy {
-#line 1254 "aaa.tab.cc" // lalr1.cc:510
+#line 1269 "aaa.tab.cc" // lalr1.cc:510
 
   /// Build a parser object.
   parser::parser ()
@@ -1315,11 +1330,11 @@ namespace yy {
   {
     switch (that.type_get ())
     {
-      case 3: // NUMBER
+      case 4: // NUMBER
         value.YY_MOVE_OR_COPY< int > (YY_MOVE (that.value));
         break;
 
-      case 6: // list
+      case 7: // list
         value.YY_MOVE_OR_COPY< std::vector<std::string> > (YY_MOVE (that.value));
         break;
 
@@ -1338,11 +1353,11 @@ namespace yy {
   {
     switch (that.type_get ())
     {
-      case 3: // NUMBER
+      case 4: // NUMBER
         value.move< int > (YY_MOVE (that.value));
         break;
 
-      case 6: // list
+      case 7: // list
         value.move< std::vector<std::string> > (YY_MOVE (that.value));
         break;
 
@@ -1361,11 +1376,11 @@ namespace yy {
     state = that.state;
     switch (that.type_get ())
     {
-      case 3: // NUMBER
+      case 4: // NUMBER
         value.move< int > (that.value);
         break;
 
-      case 6: // list
+      case 7: // list
         value.move< std::vector<std::string> > (that.value);
         break;
 
@@ -1613,11 +1628,11 @@ namespace yy {
          when using variants.  */
       switch (yyr1_[yyn])
     {
-      case 3: // NUMBER
+      case 4: // NUMBER
         yylhs.value.emplace< int > ();
         break;
 
-      case 6: // list
+      case 7: // list
         yylhs.value.emplace< std::vector<std::string> > ();
         break;
 
@@ -1637,18 +1652,18 @@ namespace yy {
             {
   case 2:
 #line 56 "aaa.yy" // lalr1.cc:919
-    { std::cout << yystack_[0].value.as < std::vector<std::string> > ().size() << '\n'; }
-#line 1642 "aaa.tab.cc" // lalr1.cc:919
+    { std::cout << yystack_[0].value.as < std::vector<std::string> > () << '\n'; }
+#line 1657 "aaa.tab.cc" // lalr1.cc:919
     break;
 
   case 3:
 #line 61 "aaa.yy" // lalr1.cc:919
     { /* Generates an empty string list */ }
-#line 1648 "aaa.tab.cc" // lalr1.cc:919
+#line 1663 "aaa.tab.cc" // lalr1.cc:919
     break;
 
 
-#line 1652 "aaa.tab.cc" // lalr1.cc:919
+#line 1667 "aaa.tab.cc" // lalr1.cc:919
             default:
               break;
             }
@@ -1867,13 +1882,13 @@ namespace yy {
   const unsigned char
   parser::yystos_[] =
   {
-       0,     5,     6,     0
+       0,     6,     7,     0
   };
 
   const unsigned char
   parser::yyr1_[] =
   {
-       0,     4,     5,     6
+       0,     5,     6,     7
   };
 
   const unsigned char
@@ -1889,7 +1904,8 @@ namespace yy {
   const char*
   const parser::yytname_[] =
   {
-  "$end", "error", "$undefined", "NUMBER", "$accept", "result", "list", YY_NULLPTR
+  "$end", "error", "$undefined", "YYEOF", "NUMBER", "$accept", "result",
+  "list", YY_NULLPTR
   };
 
 
@@ -1931,17 +1947,14 @@ namespace yy {
 
 
 } // yy
-#line 1935 "aaa.tab.cc" // lalr1.cc:1242
+#line 1951 "aaa.tab.cc" // lalr1.cc:1242
 #line 64 "aaa.yy" // lalr1.cc:1243
  
-
-using std::cout;
-using std::endl;
-
 
 
 int main(int argc, char* argv[])
 {
-  return 0;
+  yy::parser parse;
+  return parse();
 }
 
