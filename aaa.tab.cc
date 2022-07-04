@@ -36,7 +36,7 @@
 
 
 // First part of user prologue.
-#line 6 "aaa.yy" // lalr1.cc:429
+#line 7 "aaa.yy" // lalr1.cc:429
 
 
 #include <iostream>
@@ -1178,7 +1178,7 @@ switch (yytype)
 
 
 // Unqualified %code blocks.
-#line 39 "aaa.yy" // lalr1.cc:435
+#line 40 "aaa.yy" // lalr1.cc:435
 
   namespace yy
   {
@@ -1663,25 +1663,25 @@ namespace yy {
           switch (yyn)
             {
   case 2:
-#line 60 "aaa.yy" // lalr1.cc:919
+#line 61 "aaa.yy" // lalr1.cc:919
     { std::cout << "!!!! " << yystack_[0].value.as < std::vector<int> > () << endl; }
 #line 1669 "aaa.tab.cc" // lalr1.cc:919
     break;
 
   case 3:
-#line 64 "aaa.yy" // lalr1.cc:919
+#line 65 "aaa.yy" // lalr1.cc:919
     { yylhs.value.as < std::vector<int> > () = {}; }
 #line 1675 "aaa.tab.cc" // lalr1.cc:919
     break;
 
   case 4:
-#line 65 "aaa.yy" // lalr1.cc:919
+#line 66 "aaa.yy" // lalr1.cc:919
     { yylhs.value.as < std::vector<int> > () = yystack_[1].value.as < std::vector<int> > (); yylhs.value.as < std::vector<int> > ().emplace_back(yystack_[0].value.as < int > ()); }
 #line 1681 "aaa.tab.cc" // lalr1.cc:919
     break;
 
   case 5:
-#line 68 "aaa.yy" // lalr1.cc:919
+#line 69 "aaa.yy" // lalr1.cc:919
     { yylhs.value.as < int > () = yystack_[0].value.as < int > (); }
 #line 1687 "aaa.tab.cc" // lalr1.cc:919
     break;
@@ -1936,7 +1936,7 @@ namespace yy {
   const unsigned char
   parser::yyrline_[] =
   {
-       0,    60,    60,    64,    65,    68
+       0,    61,    61,    65,    66,    69
   };
 
   // Print the state stack on the debug stream.
@@ -1972,7 +1972,7 @@ namespace yy {
 
 } // yy
 #line 1975 "aaa.tab.cc" // lalr1.cc:1242
-#line 71 "aaa.yy" // lalr1.cc:1243
+#line 72 "aaa.yy" // lalr1.cc:1243
  
 
 

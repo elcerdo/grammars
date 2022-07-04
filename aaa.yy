@@ -1,5 +1,6 @@
 %language "c++"
 %require "3.2"
+%skeleton "lalr1.cc"
 %define api.token.constructor
 %define api.value.type variant
 
