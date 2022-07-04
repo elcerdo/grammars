@@ -8,6 +8,9 @@
 #include <ctype.h>
 #include <stdio.h>
 
+int yylex (); // forward
+int yyerror (const char const * s); // forward
+
 %}
 
 %token NUM
@@ -40,13 +43,12 @@ exp:      NUM             { $$ = $1;         }
    character read if not a number.  Skips all blanks
    and tabs, returns 0 for EOF. */
 
-yyerror (s)  /* Called by yyparse on error */
-     char *s;
+int yyerror (const char const * s)  /* Called by yyparse on error */
 {
   printf ("%s\n", s);
 }
 
-yylex ()
+int yylex ()
 {
   int c;
 
