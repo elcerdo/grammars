@@ -31,30 +31,19 @@ using std::endl;
 
 %}
 
-%token END 0
-%token <int> NUMBER
-%nterm <std::vector<int>> list;
-%nterm <int> item;
-
 %code
 {
   namespace yy
   {
     // Return the next token.
-    auto yylex() -> parser::symbol_type
-    {
-      static int count = 0;
-      int stage = count++;
-      return stage > 10 ? parser::make_END() : parser::make_NUMBER(stage);
-    }
-
-    // Report an error to the user.
-    auto parser::error(const std::string& msg) -> void
-    {
-      std::cerr << "ERROR " << msg << endl;
-    }
+    auto yylex() -> parser::symbol_type;
   }
 }
+
+%token END 0
+%token <int> NUMBER
+%nterm <std::vector<int>> list;
+%nterm <int> item;
 
 %% /* Grammar rules and actions follow */
 
@@ -69,7 +58,19 @@ list: %empty    { $$ = {}; }
 item: NUMBER
 ;
 
-%% 
+%%
+
+auto yy::yylex() -> parser::symbol_type
+{
+  static int count = 0;
+  int stage = count++;
+  return stage > 10 ? parser::make_END() : parser::make_NUMBER(stage);
+}
+
+auto yy::parser::error(const std::string& msg) -> void
+{
+  std::cerr << "ERROR " << msg << endl;
+}
 
 
 int main(int argc, char* argv[])

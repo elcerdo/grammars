@@ -1178,26 +1178,15 @@ switch (yytype)
 
 
 // Unqualified %code blocks.
-#line 40 "aaa.yy" // lalr1.cc:435
+#line 35 "aaa.yy" // lalr1.cc:435
 
   namespace yy
   {
     // Return the next token.
-    auto yylex() -> parser::symbol_type
-    {
-      static int count = 0;
-      int stage = count++;
-      return stage > 10 ? parser::make_END() : parser::make_NUMBER(stage);
-    }
-
-    // Report an error to the user.
-    auto parser::error(const std::string& msg) -> void
-    {
-      std::cerr << "ERROR " << msg << endl;
-    }
+    auto yylex() -> parser::symbol_type;
   }
 
-#line 1201 "aaa.tab.cc" // lalr1.cc:435
+#line 1190 "aaa.tab.cc" // lalr1.cc:435
 
 
 #ifndef YY_
@@ -1273,7 +1262,7 @@ switch (yytype)
 
 
 namespace yy {
-#line 1277 "aaa.tab.cc" // lalr1.cc:510
+#line 1266 "aaa.tab.cc" // lalr1.cc:510
 
   /// Build a parser object.
   parser::parser ()
@@ -1663,31 +1652,31 @@ namespace yy {
           switch (yyn)
             {
   case 2:
-#line 61 "aaa.yy" // lalr1.cc:919
+#line 50 "aaa.yy" // lalr1.cc:919
     { std::cout << "!!!! " << yystack_[0].value.as < std::vector<int> > () << endl; }
-#line 1669 "aaa.tab.cc" // lalr1.cc:919
+#line 1658 "aaa.tab.cc" // lalr1.cc:919
     break;
 
   case 3:
-#line 65 "aaa.yy" // lalr1.cc:919
+#line 54 "aaa.yy" // lalr1.cc:919
     { yylhs.value.as < std::vector<int> > () = {}; }
-#line 1675 "aaa.tab.cc" // lalr1.cc:919
+#line 1664 "aaa.tab.cc" // lalr1.cc:919
     break;
 
   case 4:
-#line 66 "aaa.yy" // lalr1.cc:919
+#line 55 "aaa.yy" // lalr1.cc:919
     { yylhs.value.as < std::vector<int> > () = yystack_[1].value.as < std::vector<int> > (); yylhs.value.as < std::vector<int> > ().emplace_back(yystack_[0].value.as < int > ()); }
-#line 1681 "aaa.tab.cc" // lalr1.cc:919
+#line 1670 "aaa.tab.cc" // lalr1.cc:919
     break;
 
   case 5:
-#line 69 "aaa.yy" // lalr1.cc:919
+#line 58 "aaa.yy" // lalr1.cc:919
     { yylhs.value.as < int > () = yystack_[0].value.as < int > (); }
-#line 1687 "aaa.tab.cc" // lalr1.cc:919
+#line 1676 "aaa.tab.cc" // lalr1.cc:919
     break;
 
 
-#line 1691 "aaa.tab.cc" // lalr1.cc:919
+#line 1680 "aaa.tab.cc" // lalr1.cc:919
             default:
               break;
             }
@@ -1936,7 +1925,7 @@ namespace yy {
   const unsigned char
   parser::yyrline_[] =
   {
-       0,    61,    61,    65,    66,    69
+       0,    50,    50,    54,    55,    58
   };
 
   // Print the state stack on the debug stream.
@@ -1971,9 +1960,21 @@ namespace yy {
 
 
 } // yy
-#line 1975 "aaa.tab.cc" // lalr1.cc:1242
-#line 72 "aaa.yy" // lalr1.cc:1243
- 
+#line 1964 "aaa.tab.cc" // lalr1.cc:1242
+#line 61 "aaa.yy" // lalr1.cc:1243
+
+
+auto yy::yylex() -> parser::symbol_type
+{
+  static int count = 0;
+  int stage = count++;
+  return stage > 10 ? parser::make_END() : parser::make_NUMBER(stage);
+}
+
+auto yy::parser::error(const std::string& msg) -> void
+{
+  std::cerr << "ERROR " << msg << endl;
+}
 
 
 int main(int argc, char* argv[])
