@@ -1,6 +1,8 @@
 %language "c++"
 %require "3.2"
 %skeleton "lalr1.cc"
+%output "aaa.cc"
+%defines "aaa.h"
 %define api.token.constructor
 %define api.value.type variant
 
