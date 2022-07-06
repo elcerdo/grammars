@@ -81,5 +81,9 @@ auto assembly::run_parser(const size_t nn) -> int
     nn,
   };
   assembly::parser parser(in_state);
+#if YYDEBUG
+  parser.set_debug_stream(std::cout);
+  parser.set_debug_level(1);
+#endif
   return parser();
 }

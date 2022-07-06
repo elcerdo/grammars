@@ -11,11 +11,9 @@ bison_target(assembly_parser
 
 add_executable(calc)
 target_sources(calc
-    PRIVATE
-    Driver.h
-    PRIVATE
-    Driver.cpp
+    PUBLIC
     assembly.h
+    PRIVATE
     ${BISON_assembly_parser_OUTPUTS}
     main.cpp
     )
@@ -26,5 +24,7 @@ target_include_directories(calc
 target_link_libraries(calc
     PRIVATE
     )
-
-
+target_compile_definitions(calc
+    PRIVATE
+    #YYDEBUG
+    )
