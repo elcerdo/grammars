@@ -5,15 +5,15 @@
 
 //#include <calc/parser.h>
 
-#define YY_DECL yy::parser::symbol_type yylex(driver& drv);
-YY_DECL;
+//#define YY_DECL yy::parser::symbol_type yylex(driver& drv);
+//YY_DECL;
 
 // Conducting the whole scanning and parsing of Calc++.
 struct Driver
 {
 	Driver();
 
-  std::map<std::string, int> variables;
+  std::unordered_map<std::string, int> variables;
   int result;
 
 	// Run the parser on file F.  Return 0 on success.
@@ -29,5 +29,5 @@ struct Driver
   // Whether to generate scanner debug traces.
   bool trace_scanning;
   // The token's location used by the scanner.
-  yy::location location;
+ //  yy::location location;
 };
