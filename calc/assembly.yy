@@ -35,6 +35,13 @@ struct InputState {
   const size_t position_max = 0;
 };
 
+struct OutputState {
+  size_t last_list_size = 0;
+  size_t list_count = 0;
+};
+
+static OutputState output_state;
+
 %}
 
 %param {InputState& in_state}
@@ -55,7 +62,11 @@ struct InputState {
 
 %% /* Grammar rules and actions follow */
 
-result: list        { std::cout << "!!!! " << $1 << std::endl; }
+result: list        {
+  std::cout << "!!!! " << $1 << std::endl;
+  output_state.list_count ++;
+  output_state.last_list_size = $1.size();
+}
 list  : %empty      { $$ = {}; }
       | list NUMBER { $$ = $1; $$.emplace_back($2); }
 
@@ -74,7 +85,7 @@ auto assembly::parser::error(const std::string& msg) -> void
   std::cerr << "ERROR " << msg << std::endl;
 }
 
-auto assembly::run_parser(const size_t nn) -> int
+auto assembly::run_parser(const size_t nn) -> std::optional<size_t>
 {
   InputState in_state {
     0,
@@ -85,5 +96,8 @@ auto assembly::run_parser(const size_t nn) -> int
   parser.set_debug_stream(std::cout);
   parser.set_debug_level(1);
 #endif
-  return parser();
+  std::cout << "num_eval " << output_state.list_count << std::endl;
+  if (parser())
+    return {};
+  return output_state.last_list_size;
 }

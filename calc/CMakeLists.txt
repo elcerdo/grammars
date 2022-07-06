@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.17)
 project(calculator CXX)
+set(CMAKE_CXX_STANDARD 17)
 
 find_package(BISON 3.2)
 

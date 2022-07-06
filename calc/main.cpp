@@ -12,7 +12,8 @@ int main(int argc, char* argv[])
 		for (size_t kk=0; kk<5; kk++) {
 				cout << "=============" << endl;
 				const auto ret = assembly::run_parser(kk);
-				cout << (ret ? "ERROR" : "OK") << endl;
+				cout << (ret ? "OK" : "ERROR") << endl;
+        if (ret) cout << "GOT " << *ret << endl;
 		}
 
 		return 0;
