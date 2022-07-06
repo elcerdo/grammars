@@ -1,6 +1,7 @@
 %language "c++"
 %require "3.2"
 %skeleton "lalr1.cc"
+%define api.namespace {yy_asm}
 %define api.token.constructor
 %define api.value.type variant
 
@@ -15,7 +16,7 @@ auto operator<<(
   const std::vector<int>& ss)
   -> std::ostream&
 {
-  o << '[';
+  o << "[";
 
   bool first = true;
   for (const auto& s: ss) {
@@ -24,7 +25,7 @@ auto operator<<(
     first = false;
   }
 
-  return o << ']';
+  return o << "] (" << ss.size() << ")";
 }
 
 struct InputState {
@@ -36,37 +37,30 @@ struct InputState {
 
 %param {InputState& in_state}
 
-
 %code
 {
-  namespace yy
+  namespace yy_asm
   {
     // Return the next token.
     auto yylex(InputState& in_state) -> parser::symbol_type;
+    auto run_parser(const size_t nn) -> int;
   }
 }
 
 %token END 0
 %token <int> NUMBER
+
 %nterm <std::vector<int>> list;
-%nterm <int> item;
 
 %% /* Grammar rules and actions follow */
 
-result: list    { std::cout << "!!!! " << $1 << std::endl; }
-;
+result: list        { std::cout << "!!!! " << $1 << std::endl; }
+list  : %empty      { $$ = {}; }
+      | list NUMBER { $$ = $1; $$.emplace_back($2); }
 
+%% /* Other definitions */
 
-list: %empty    { $$ = {}; }
-    | list item { $$ = $1; $$.emplace_back($2); }
-;
-
-item: NUMBER
-;
-
-%%
-
-auto yy::yylex(InputState& in_state) -> parser::symbol_type
+auto yy_asm::yylex(InputState& in_state) -> parser::symbol_type
 {
   size_t stage = in_state.position++;
   return
@@ -74,20 +68,17 @@ auto yy::yylex(InputState& in_state) -> parser::symbol_type
     parser::make_END();
 }
 
-auto yy::parser::error(const std::string& msg) -> void
+auto yy_asm::parser::error(const std::string& msg) -> void
 {
   std::cerr << "ERROR " << msg << std::endl;
 }
 
-#include <assembly.h>
-
-int run_asm_parser(size_t nn)
+auto yy_asm::run_parser(const size_t nn) -> int
 {
   InputState in_state {
     0,
     nn,
   };
-  yy::parser parse(in_state);
-  return parse();
+  yy_asm::parser parser(in_state);
+  return parser();
 }
-

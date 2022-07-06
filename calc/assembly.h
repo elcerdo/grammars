@@ -2,5 +2,8 @@
 
 #include <cstddef>
 
-int run_asm_parser(const size_t nn);
+namespace yy_asm {
 
+int run_parser(const size_t nn);
+
+}

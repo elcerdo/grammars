@@ -11,11 +11,9 @@ int main(int argc, char* argv[])
 
 		for (size_t kk=0; kk<5; kk++) {
 				cout << "=============" << endl;
-				const auto ret = run_asm_parser(kk);
+				const auto ret = yy_asm::run_parser(kk);
 				cout << (ret ? "ERROR" : "OK") << endl;
 		}
 
 		return 0;
 }
-
-
