@@ -6,7 +6,7 @@ find_package(BISON 3.2)
 bison_target(assembly_parser
     assembly.yy
     "${CMAKE_CURRENT_BINARY_DIR}/assembly_parser.cpp"
-    DEFINES_FILE "${CMAKE_CURRENT_BINARY_DIR}/assembly_parser.h")
+    )
 
 add_executable(calc)
 target_sources(calc

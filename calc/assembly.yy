@@ -1,6 +1,7 @@
 %language "c++"
 %require "3.2"
 %skeleton "lalr1.cc"
+%param {const size_t nn}
 %define api.token.constructor
 %define api.value.type variant
 
@@ -31,12 +32,13 @@ using std::endl;
 
 %}
 
+
 %code
 {
   namespace yy
   {
     // Return the next token.
-    auto yylex() -> parser::symbol_type;
+    auto yylex(const size_t nn) -> parser::symbol_type;
   }
 }
 
@@ -60,11 +62,13 @@ item: NUMBER
 
 %%
 
-auto yy::yylex() -> parser::symbol_type
+auto yy::yylex(const size_t nn) -> parser::symbol_type
 {
-  static int count = 0;
-  int stage = count++;
-  return stage > 10 ? parser::make_END() : parser::make_NUMBER(stage);
+  static size_t count = 0;
+  size_t stage = count++;
+  return
+    stage < 10 ? parser::make_NUMBER(static_cast<int>(stage)) :
+    parser::make_END();
 }
 
 auto yy::parser::error(const std::string& msg) -> void
@@ -73,9 +77,9 @@ auto yy::parser::error(const std::string& msg) -> void
 }
 
 
-int foo()
+int foo(size_t nn)
 {
-  yy::parser parse;
+  yy::parser parse(10);
   return parse();
 }
 
