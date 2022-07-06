@@ -56,16 +56,20 @@ static OutputState output_state;
 }
 
 %token END 0
-%token <int> NUMBER
+%token<int> NUMBER
 
-%nterm <std::vector<int>> list;
+%type<size_t> result
+%type<std::vector<int>> list
+
+%start result
 
 %% /* Grammar rules and actions follow */
 
 result: list        {
   std::cout << "!!!! " << $1 << std::endl;
   output_state.list_count ++;
-  output_state.last_list_size = $1.size();
+  $$ = $1.size();
+  output_state.last_list_size = $$;
 }
 list  : %empty      { $$ = {}; }
       | list NUMBER { $$ = $1; $$.emplace_back($2); }
