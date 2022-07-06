@@ -56,12 +56,12 @@ static OutputState output_state;
 }
 
 %token END 0
-%token<int> NUMBER
 %token FIZZ
+%token BUZZ
+%token<int> NUMBER
 
 %type<size_t> result
 %type<std::vector<int>> list
-%type<int> item
 
 %start result
 
@@ -74,10 +74,9 @@ result: list        {
   output_state.last_list_size = $$;
 }
 list  : %empty      { $$ = {}; }
-      | list item { $$ = $1; $$.emplace_back($2); }
-item  : NUMBER { $$ = $1; }
-      | FIZZ { $$ = 133; std::cout << "FIZZ" << std::endl; }
-
+      | list NUMBER { $$ = $1; $$.emplace_back($2); }
+      | list FIZZ { $$ = $1; std::cout << "FIZZ" << std::endl; }
+      | list BUZZ { $$ = $1; std::cout << "BUZZ" << std::endl; }
 
 %% /* Other definitions */
 
@@ -86,7 +85,8 @@ auto assembly::yylex(InputState& in_state) -> parser::symbol_type
   const size_t pos = in_state.position++;
   return
     pos >= in_state.position_max ? parser::make_END() :
-    pos == 3 ? parser::make_FIZZ() :
+    pos % 3  == 0 ? parser::make_FIZZ() :
+    pos % 5  == 0 ? parser::make_BUZZ() :
     parser::make_NUMBER(static_cast<int>(pos));
 }
 
