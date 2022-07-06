@@ -6,6 +6,7 @@
 %define api.value.type variant
 
 %{
+#include <assembly.h>
 
 #include <iostream>
 #include <vector>
@@ -43,7 +44,6 @@ struct InputState {
   {
     // Return the next token.
     auto yylex(InputState& in_state) -> parser::symbol_type;
-    auto run_parser(const size_t nn) -> int;
   }
 }
 
