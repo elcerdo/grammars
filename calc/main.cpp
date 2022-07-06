@@ -9,7 +9,7 @@ int main(int argc, char* argv[])
 {
 		cout << "coucou" << endl;
 
-		for (size_t kk=0; kk<5; kk++) {
+		for (size_t kk=0; kk<10; kk++) {
 				cout << "=============" << endl;
 				const auto ret = assembly::run_parser(kk);
 				cout << (ret ? "OK" : "ERROR") << endl;
