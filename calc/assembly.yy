@@ -1,7 +1,6 @@
 %language "c++"
 %require "3.2"
 %skeleton "lalr1.cc"
-%param {const size_t nn}
 %define api.token.constructor
 %define api.value.type variant
 
@@ -28,9 +27,14 @@ auto operator<<(
   return o << ']';
 }
 
-using std::endl;
+struct InputState {
+  size_t position = 0;
+  const size_t position_max = 0;
+};
 
 %}
+
+%param {InputState& in_state}
 
 
 %code
@@ -38,7 +42,7 @@ using std::endl;
   namespace yy
   {
     // Return the next token.
-    auto yylex(const size_t nn) -> parser::symbol_type;
+    auto yylex(InputState& in_state) -> parser::symbol_type;
   }
 }
 
@@ -49,7 +53,7 @@ using std::endl;
 
 %% /* Grammar rules and actions follow */
 
-result: list    { std::cout << "!!!! " << $1 << endl; }
+result: list    { std::cout << "!!!! " << $1 << std::endl; }
 ;
 
 
@@ -62,24 +66,28 @@ item: NUMBER
 
 %%
 
-auto yy::yylex(const size_t nn) -> parser::symbol_type
+auto yy::yylex(InputState& in_state) -> parser::symbol_type
 {
-  static size_t count = 0;
-  size_t stage = count++;
+  size_t stage = in_state.position++;
   return
-    stage < 10 ? parser::make_NUMBER(static_cast<int>(stage)) :
+    stage < in_state.position_max ? parser::make_NUMBER(static_cast<int>(stage)) :
     parser::make_END();
 }
 
 auto yy::parser::error(const std::string& msg) -> void
 {
-  std::cerr << "ERROR " << msg << endl;
+  std::cerr << "ERROR " << msg << std::endl;
 }
 
+#include <assembly.h>
 
-int foo(size_t nn)
+int run_asm_parser(size_t nn)
 {
-  yy::parser parse(10);
+  InputState in_state {
+    0,
+    nn,
+  };
+  yy::parser parse(in_state);
   return parse();
 }
 

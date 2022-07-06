@@ -5,7 +5,8 @@ find_package(BISON 3.2)
 
 bison_target(assembly_parser
     assembly.yy
-    "${CMAKE_CURRENT_BINARY_DIR}/assembly_parser.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/assembly_parser.tab.cpp"
+    DEFINES_FILE "${CMAKE_CURRENT_BINARY_DIR}/assembly_parser.tab.h"
     )
 
 add_executable(calc)
@@ -13,9 +14,10 @@ target_sources(calc
     PRIVATE
     Driver.h
     PRIVATE
-    main.cpp
     Driver.cpp
+    assembly.h
     ${BISON_assembly_parser_OUTPUTS}
+    main.cpp
     )
 target_include_directories(calc
     PRIVATE
