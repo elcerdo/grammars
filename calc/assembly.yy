@@ -9,8 +9,11 @@
 
 #include <assembly.h>
 
-#include <iostream>
+#include <spdlog/spdlog.h>
+
 #include <vector>
+#include <iostream>
+#include <sstream>
 
 // Print a list of strings.
 auto operator<<(
@@ -68,15 +71,19 @@ static OutputState output_state;
 %% /* Grammar rules and actions follow */
 
 result: list        {
-  std::cout << "!!!! " << $1 << std::endl;
-  output_state.list_count ++;
   $$ = $1.size();
+
+  output_state.list_count ++;
   output_state.last_list_size = $$;
+
+  std::stringstream ss;
+  ss << $1;
+  spdlog::info("!!!! {}", ss.str());
 }
 list  : %empty      { $$ = {}; }
       | list NUMBER { $$ = $1; $$.emplace_back($2); }
-      | list FIZZ { $$ = $1; std::cout << "FIZZ" << std::endl; }
-      | list BUZZ { $$ = $1; std::cout << "BUZZ" << std::endl; }
+      | list FIZZ { $$ = $1; spdlog::info("FIZZ"); }
+      | list BUZZ { $$ = $1; spdlog::info("BUZZ"); }
 
 %% /* Other definitions */
 
@@ -92,7 +99,7 @@ auto assembly::yylex(InputState& in_state) -> parser::symbol_type
 
 auto assembly::parser::error(const std::string& msg) -> void
 {
-  std::cerr << "ERROR " << msg << std::endl;
+  spdlog::error("ERROR {}", msg);
 }
 
 auto assembly::run_parser(const size_t nn) -> std::optional<size_t>
@@ -106,7 +113,7 @@ auto assembly::run_parser(const size_t nn) -> std::optional<size_t>
   parser.set_debug_stream(std::cout);
   parser.set_debug_level(1);
 #endif
-  std::cout << "num_eval " << output_state.list_count << std::endl;
+  spdlog::info("num_eval {}", output_state.list_count);
   if (parser())
     return {};
   return output_state.last_list_size;

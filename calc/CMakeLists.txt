@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.17)
 project(calculator CXX)
 set(CMAKE_CXX_STANDARD 17)
 
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+
+include(spdlog)
+
 find_package(BISON 3.2)
 
 bison_target(assembly_parser
@@ -24,6 +28,7 @@ target_include_directories(calc
     )
 target_link_libraries(calc
     PRIVATE
+    spdlog::spdlog
     )
 target_compile_definitions(calc
     PRIVATE
