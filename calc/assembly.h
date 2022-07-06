@@ -2,7 +2,7 @@
 
 #include <cstddef>
 
-namespace yy_asm {
+namespace assembly {
 
 int run_parser(const size_t nn);
 
