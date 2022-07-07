@@ -115,20 +115,76 @@ int main(int argc, char* argv[])
     if (!test_assembly(opcodes, 5, 1)) return 1;
   }
 
-  // if (!test_assembly(nlohmann::json{
-  //   {
-  //     {"opcode", "func_start"},
-  //     {"func_id", assembly::FUNC_DOUBLE},
-  //   },
-  //   {
-  //     {"opcode", "func_arg"},
-  //     {"var_id", "xx"},
-  //   },
-  //   {
-  //     {"opcode", "func_end"},
-  //   },
-  // }, 1, 12.)) return 1;
+  { // simple 1-arg func program that double its argument
+    const auto opcodes = nlohmann::json{
+      {
+        {"opcode", "func_start"},
+        {"func_id", assembly::FUNC_DOUBLE},
+      },
+      {
+        {"opcode", "var_lookup"},
+        {"var_id", "xx"},
+      },
+      {
+        {"opcode", "func_end"},
+      },
+    };
+    if (!test_assembly(opcodes, 3, 6)) return 1;
+    if (!test_assembly(opcodes, 5, 10)) return 1;
+    if (!test_assembly(opcodes, -1, -2)) return 1;
+  }
 
+  { // nested 1-arg func program that returns (xx - 1) * 2
+    const auto opcodes = nlohmann::json{
+      {
+        {"opcode", "func_start"},
+        {"func_id", assembly::FUNC_DOUBLE},
+      },
+      {
+        {"opcode", "func_start"},
+        {"func_id", assembly::FUNC_MINUS_ONE},
+      },
+      {
+        {"opcode", "var_lookup"},
+        {"var_id", "xx"},
+      },
+      {
+        {"opcode", "func_end"},
+      },
+      {
+        {"opcode", "func_end"},
+      },
+    };
+    if (!test_assembly(opcodes, 3, 4)) return 1;
+    if (!test_assembly(opcodes, 5, 8)) return 1;
+    if (!test_assembly(opcodes, -1, -4)) return 1;
+  }
+
+  { // binary func program that returns xx + 1
+    const auto opcodes = nlohmann::json{
+      {
+        {"opcode", "func_start"},
+        {"func_id", assembly::FUNC_ADD},
+      },
+      {
+        {"opcode", "func_start"},
+        {"func_id", assembly::FUNC_ONE},
+      },
+      {
+        {"opcode", "func_end"},
+      },
+      {
+        {"opcode", "var_lookup"},
+        {"var_id", "xx"},
+      },
+      {
+        {"opcode", "func_end"},
+      },
+    };
+    if (!test_assembly(opcodes, 3, 4)) return 1;
+    if (!test_assembly(opcodes, 5, 8)) return 1;
+    if (!test_assembly(opcodes, -1, -4)) return 1;
+  }
 
   return 0;
 }
