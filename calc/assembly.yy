@@ -73,8 +73,7 @@ expr: func_call
 var_lookup: VAR_LOOKUP {
   const auto iter_value = parser_state.var_id_to_values.find($1);
   if (iter_value == std::cend(parser_state.var_id_to_values))
-    throw syntax_error("bad var lookup");
-
+    throw syntax_error("unknown var");
   assert(iter != std::cend(parser_state.var_id_to_values));
   spdlog::debug("[var_lookup] id {} value {}",
     $1,
@@ -83,10 +82,25 @@ var_lookup: VAR_LOOKUP {
 }
 
 func_call: FUNC_START func_args FUNC_END {
-  $$ = 42.5f;
-  spdlog::debug("[func_call] func_id {} args ({})",
-    $1,
-    fmt::join($2, ","));
+  const auto num_args = $2.size();
+  switch (num_args) {
+  case 0:
+    {
+      const auto& func_id_to_functors = parser_state.func_id_to_nullary_functors;
+      const auto iter_functor = func_id_to_functors.find($1);
+      if (iter_functor == std::cend(func_id_to_functors))
+        throw syntax_error("unknown nullary func");
+      assert(iter != std::cend(func_id_to_functors));
+      spdlog::debug("[func_call] func {} args ({})",
+        $1,
+        fmt::join($2, ","));
+      $$ = iter_functor->second();
+    }
+    break;
+  default:
+    throw syntax_error("bad num args");
+    break;
+  }
 }
 
 func_args: %empty { $$ = {}; }
@@ -155,6 +169,7 @@ auto assembly::run_parser(const nlohmann::json& jj, const float xx_value) -> std
   ParserState parser_state;
   parser_state.var_id_to_values["xx"] = xx_value;
   parser_state.func_id_to_nullary_functors[FUNC_ZERO] = []() -> Scalar { return 0; };
+  parser_state.func_id_to_nullary_functors[FUNC_ONE] = []() -> Scalar { return 1; };
 
   assembly::parser parser(lex_state, parser_state);
 

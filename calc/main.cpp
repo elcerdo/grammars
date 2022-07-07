@@ -61,7 +61,7 @@ int main(int argc, char* argv[])
       {"opcode", "var_lookup"},
       {"var_id", "tmp000"},
     },
-  }, 2, std::nan("")) == std::nan("invalid-var-id")) return 1;
+  }, 2, {})) return 1;
 
   { // simple lookup program
     const auto opcodes = nlohmann::json{
@@ -72,6 +72,19 @@ int main(int argc, char* argv[])
     };
     if (!test_assembly(opcodes, 3, 3)) return 1;
     if (!test_assembly(opcodes, 5, 5)) return 1;
+  }
+
+  { // call to undefined 0-arg func program
+    const auto opcodes = nlohmann::json{
+      {
+        {"opcode", "func_start"},
+        {"func_id", assembly::FUNC_UNDEFINED},
+      },
+      {
+        {"opcode", "func_end"},
+      },
+    };
+    if (!test_assembly(opcodes, 3, {})) return 1;
   }
 
   { // simple 0-arg func program that returns zero
@@ -88,19 +101,33 @@ int main(int argc, char* argv[])
     if (!test_assembly(opcodes, 5, 0)) return 1;
   }
 
-  if (!test_assembly(nlohmann::json{
-    {
-      {"opcode", "func_start"},
-      {"func_id", assembly::FUNC_ZERO},
-    },
-    {
-      {"opcode", "func_arg"},
-      {"var_id", "xx"},
-    },
-    {
-      {"opcode", "func_end"},
-    },
-  }, 1, 12.)) return 1;
+  { // simple 0-arg func program that returns one
+    const auto opcodes = nlohmann::json{
+      {
+        {"opcode", "func_start"},
+        {"func_id", assembly::FUNC_ONE},
+      },
+      {
+        {"opcode", "func_end"},
+      },
+    };
+    if (!test_assembly(opcodes, 3, 1)) return 1;
+    if (!test_assembly(opcodes, 5, 1)) return 1;
+  }
+
+  // if (!test_assembly(nlohmann::json{
+  //   {
+  //     {"opcode", "func_start"},
+  //     {"func_id", assembly::FUNC_DOUBLE},
+  //   },
+  //   {
+  //     {"opcode", "func_arg"},
+  //     {"var_id", "xx"},
+  //   },
+  //   {
+  //     {"opcode", "func_end"},
+  //   },
+  // }, 1, 12.)) return 1;
 
 
   return 0;
