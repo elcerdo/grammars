@@ -49,13 +49,15 @@ int main(int argc, char* argv[])
 
   test_assembly(nlohmann::json{
     {
-      {"opcode", "foo"},
-      {"zz", 42},
+      {"opcode", "func_start"},
+      {"func_id", 0xf0},
     },
     {
-      {"opcode", "bar"},
-      {"xx", -5},
-      {"yy", 1},
+      {"opcode", "func_arg"},
+      {"var_id", "tmp000"},
+    },
+    {
+      {"opcode", "func_end"},
     },
   });
 

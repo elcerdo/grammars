@@ -21,9 +21,11 @@ struct LexerState {
 };
 
 struct ParserState {
-  size_t last_list_size = 0;
-  size_t list_count = 0;
+  size_t result_count = 0;
 };
+
+using FuncId = size_t;
+using VarId = std::string;
 
 %}
 
@@ -40,34 +42,46 @@ struct ParserState {
 }
 
 %token END 0
-%token FIZZ
-%token BUZZ
-%token<int> NUMBER
+%token<FuncId> FUNC_START
+%token<VarId> FUNC_ARG
+%token FUNC_END
 
-%type<size_t> result
-%type<std::vector<int>> list
+%nterm<std::vector<VarId>> func_args
 
 %start result
 
 %% /* Grammar rules and actions follow */
 
-result: list        {
-  $$ = $1.size();
-
-  out_state.list_count ++;
-  out_state.last_list_size = $$;
-
-  spdlog::info("!!!! [{}] ({})",
-    fmt::join($1, ","),
-    $1.size());
+result: func_call {
+  out_state.result_count ++;
+  spdlog::info("[result] result_count {}", out_state.result_count);
 }
 
-list  : %empty      { $$ = {}; }
+func_call: FUNC_START func_args FUNC_END {
+  spdlog::info("[func_call] func_id {} args ({})",
+    $1,
+    fmt::join($2, ","));
+}
+
+func_args: %empty { $$ = {}; }
+         | func_args FUNC_ARG { $$ = $1; $$.emplace_back($2); }
+
+/* list  : %empty      { $$ = {}; }
       | list NUMBER { $$ = $1; $$.emplace_back($2); }
       | list FIZZ { $$ = $1; spdlog::info("FIZZ"); }
-      | list BUZZ { $$ = $1; spdlog::info("BUZZ"); }
+      | list BUZZ { $$ = $1; spdlog::info("BUZZ"); } */
 
 %% /* Other definitions */
+
+constexpr size_t shash(char const * ii)
+{
+  size_t seed = 0xa578ffb2;
+  while (*ii != 0)
+    seed ^= static_cast<size_t>(*ii++) + 0x9e3779b9 + (seed<<6) + (seed>>2);
+  return seed;
+}
+
+const
 
 auto assembly::yylex(LexerState& in_state) -> parser::symbol_type
 {
@@ -75,12 +89,28 @@ auto assembly::yylex(LexerState& in_state) -> parser::symbol_type
     return parser::make_END();
 
   const auto& current = *in_state.input_current++;
-  return parser::make_NUMBER(current.at("xx").get<int>());
+
+  constexpr auto func_start_hash = shash("func_start");
+  constexpr auto func_arg_hash = shash("func_arg");
+  constexpr auto func_end_hash = shash("func_end");
+  const auto opcode_hash = shash(current.at("opcode").get<std::string>().c_str());
+
+  switch (opcode_hash) {
+    case func_start_hash:
+      return parser::make_FUNC_START(current.at("func_id").get<FuncId>());
+    case func_arg_hash:
+      return parser::make_FUNC_ARG(current.at("var_id").get<VarId>());
+    case func_end_hash:
+      return parser::make_FUNC_END();
+    default:
+      assert(false);
+      return parser::make_END();
+  }
 }
 
 auto assembly::parser::error(const std::string& msg) -> void
 {
-  spdlog::error("ASM ERROR {}", msg);
+  spdlog::error("ASM PARSER ERROR {}", msg);
 }
 
 auto assembly::run_parser(const nlohmann::json& jj) -> std::optional<size_t>
@@ -107,12 +137,13 @@ auto assembly::run_parser(const nlohmann::json& jj) -> std::optional<size_t>
   try {
     const auto parsing_err = parser();
 
-    spdlog::debug("num_eval {}", output_state.list_count);
+    spdlog::debug("result_count {}", output_state.result_count);
 
     if (parsing_err)
       return {};
-    return output_state.last_list_size;
+    return 42;
   } catch (nlohmann::json::exception& exc) {
+    spdlog::error("ASM JSON ERROR {}", exc.what());
     return {};
   }
 }
