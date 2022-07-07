@@ -10,28 +10,9 @@
 #include <assembly.h>
 
 #include <spdlog/spdlog.h>
+#include <spdlog/fmt/bundled/ranges.h>
 
 #include <vector>
-#include <iostream>
-#include <sstream>
-
-// Print a list of strings.
-auto operator<<(
-  std::ostream& o,
-  const std::vector<int>& ss)
-  -> std::ostream&
-{
-  o << "[";
-
-  bool first = true;
-  for (const auto& s: ss) {
-    if (!first) o << ", ";
-    o << s;
-    first = false;
-  }
-
-  return o << "] (" << ss.size() << ")";
-}
 
 struct InputState {
   size_t position = 0;
@@ -75,10 +56,11 @@ result: list        {
   out_state.list_count ++;
   out_state.last_list_size = $$;
 
-  std::stringstream ss;
-  ss << $1;
-  spdlog::info("!!!! {}", ss.str());
+  spdlog::info("!!!! [{}] (10)",
+    fmt::join($1, ","),
+    $1.size());
 }
+
 list  : %empty      { $$ = {}; }
       | list NUMBER { $$ = $1; $$.emplace_back($2); }
       | list FIZZ { $$ = $1; spdlog::info("FIZZ"); }
