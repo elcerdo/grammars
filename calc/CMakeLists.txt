@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 include(spdlog)
+include(nlohmann_json)
 
 find_package(BISON 3.2)
 
@@ -29,6 +30,7 @@ target_include_directories(calc
 target_link_libraries(calc
     PRIVATE
     spdlog::spdlog
+    nlohmann_json::nlohmann_json
     )
 target_compile_definitions(calc
     PRIVATE
