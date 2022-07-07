@@ -84,8 +84,8 @@ func_args: %empty { $$ = {}; }
 
 /* list  : %empty      { $$ = {}; }
       | list NUMBER { $$ = $1; $$.emplace_back($2); }
-      | list FIZZ { $$ = $1; spdlog::info("FIZZ"); }
-      | list BUZZ { $$ = $1; spdlog::info("BUZZ"); } */
+      | list FIZZ { $$ = $1; spdlog::debug("FIZZ"); }
+      | list BUZZ { $$ = $1; spdlog::debug("BUZZ"); } */
 
 %% /* Other definitions */
 
@@ -127,7 +127,7 @@ auto assembly::yylex(LexerState& lex_state) -> parser::symbol_type
 
 auto assembly::parser::error(const std::string& msg) -> void
 {
-  spdlog::error("ASM PARSER ERROR {}", msg);
+  spdlog::debug("[parser_error] {}", msg);
 }
 
 auto assembly::run_parser(const nlohmann::json& jj, const float xx_value) -> std::optional<float>

@@ -15,7 +15,10 @@ void test_fblist(const size_t kk_max)
   }
 }
 
-void test_assembly(const nlohmann::json& jj, const float xx_value)
+bool test_assembly(
+  const nlohmann::json& jj,
+  const float xx_value,
+  const std::optional<float> ret_)
 {
 
   spdlog::critical("test assembly");
@@ -26,7 +29,9 @@ void test_assembly(const nlohmann::json& jj, const float xx_value)
   const auto ret = assembly::run_parser(jj, xx_value);
 
   if (ret) spdlog::info("yy_value {}", *ret);
-  else spdlog::warn("FAILED");
+  else spdlog::info("FAILED");
+
+  return ret == ret_;
 }
 
 int main(int argc, char* argv[])
@@ -35,7 +40,7 @@ int main(int argc, char* argv[])
 
   test_fblist(5);
 
-  test_assembly(nlohmann::json{
+  if (!test_assembly(nlohmann::json{
     {
       {"opcode", "foo"},
       {"xx", 42},
@@ -45,35 +50,54 @@ int main(int argc, char* argv[])
       {"xx", -5},
       {"yy", 1},
     },
-  }, 0);
+  }, 0, {})) return 1;
 
-  test_assembly(nlohmann::json{
+  if (!test_assembly(nlohmann::json{
+    {
+      {"opcode", "var_lookup"},
+      {"var_id", "tmp000"},
+    },
+  }, 2, std::nan("")) == std::nan("invalid-var-id")) return 1;
+
+  { // simple lookup program
+    const auto opcodes = nlohmann::json{
+      {
+        {"opcode", "var_lookup"},
+        {"var_id", "xx"},
+      },
+    };
+    if (!test_assembly(opcodes, 3, 3)) return 1;
+    if (!test_assembly(opcodes, 5, 5)) return 1;
+  }
+
+  { // simple 0-arg func program
+    const auto opcodes = nlohmann::json{
+      {
+        {"opcode", "func_start"},
+        {"func_id", 0xf0},
+      },
+      {
+        {"opcode", "func_end"},
+      },
+    };
+    if (!test_assembly(opcodes, 3, 42.5)) return 1;
+    if (!test_assembly(opcodes, 5, 42.5)) return 1;
+  }
+
+  if (!test_assembly(nlohmann::json{
     {
       {"opcode", "func_start"},
       {"func_id", 0xf0},
     },
     {
       {"opcode", "func_arg"},
-      {"var_id", "tmp000"},
+      {"var_id", "xx"},
     },
     {
       {"opcode", "func_end"},
     },
-  }, 1);
+  }, 1, 12.)) return 1;
 
-  test_assembly(nlohmann::json{
-    {
-      {"opcode", "var_lookup"},
-      {"var_id", "tmp000"},
-    },
-  }, 2);
-
-  test_assembly(nlohmann::json{
-    {
-      {"opcode", "var_lookup"},
-      {"var_id", "xx"},
-    },
-  }, 3);
 
   return 0;
 }
