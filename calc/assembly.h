@@ -4,6 +4,6 @@
 
 namespace assembly {
 
-auto run_parser(const nlohmann::json& jj) -> std::optional<size_t>;
+auto run_parser(const nlohmann::json& jj, const float xx_value) -> std::optional<float>;
 
 }

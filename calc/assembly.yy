@@ -17,11 +17,11 @@
 struct LexerState {
   using Container = std::vector<nlohmann::json>;
   Container::const_iterator input_current;
-  Container::const_iterator input_end;
+  const Container::const_iterator input_end;
 };
 
 struct ParserState {
-  size_t result_count = 0;
+  float result_value;
 };
 
 using FuncId = size_t;
@@ -43,12 +43,11 @@ using VarId = std::string;
 
 %token END 0
 %token<FuncId> FUNC_START
-%token<VarId> FUNC_ARG
+%token<VarId> FUNC_ARG VAR_LOOKUP
 %token FUNC_END
-%token<VarId> VAR_LOOKUP
 
-/* %nterm<float> expr
-%nterm<float> func_call */
+%nterm<float> expr func_call var_lookup
+
 %nterm<std::vector<VarId>> func_args
 
 %start result
@@ -56,23 +55,22 @@ using VarId = std::string;
 %% /* Grammar rules and actions follow */
 
 result: expr {
-  out_state.result_count ++;
-  spdlog::info("[result] result_count {} result {}",
-    out_state.result_count,
-    "$1");
+  out_state.result_value = $1;
+  spdlog::debug("[result] value {}",
+    out_state.result_value);
 }
 
 expr: func_call
     | var_lookup
 
 var_lookup: VAR_LOOKUP {
-  /* $$ = -2.3f; */
-  spdlog::info("[var_lookup] var_id \"{}\"", $1);
+  $$ = -2.3f;
+  spdlog::debug("[var_lookup] var_id {}", $1);
 }
 
 func_call: FUNC_START func_args FUNC_END {
-  /* $$ = 42.5f; */
-  spdlog::info("[func_call] func_id {} args ({})",
+  $$ = 42.5f;
+  spdlog::debug("[func_call] func_id {} args ({})",
     $1,
     fmt::join($2, ","));
 }
@@ -128,13 +126,13 @@ auto assembly::parser::error(const std::string& msg) -> void
   spdlog::error("ASM PARSER ERROR {}", msg);
 }
 
-auto assembly::run_parser(const nlohmann::json& jj) -> std::optional<size_t>
+auto assembly::run_parser(const nlohmann::json& jj, const float xx_value) -> std::optional<float>
 {
   if (!jj.is_array())
     return {};
 
   const auto kk = jj.get<LexerState::Container>();
-  spdlog::debug("num_opcodes {}", kk.size());
+  spdlog::debug("[run_parser] num_opcodes {}", kk.size());
   LexerState in_state {
     std::cbegin(kk),
     std::cend(kk),
@@ -151,12 +149,9 @@ auto assembly::run_parser(const nlohmann::json& jj) -> std::optional<size_t>
 
   try {
     const auto parsing_err = parser();
-
-    spdlog::debug("result_count {}", output_state.result_count);
-
     if (parsing_err)
       return {};
-    return 42;
+    return output_state.result_value;
   } catch (nlohmann::json::exception& exc) {
     spdlog::error("ASM JSON ERROR {}", exc.what());
     return {};

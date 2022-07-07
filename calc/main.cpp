@@ -15,16 +15,17 @@ void test_fblist(const size_t kk_max)
   }
 }
 
-void test_assembly(const nlohmann::json& jj)
+void test_assembly(const nlohmann::json& jj, const float xx_value)
 {
 
   spdlog::critical("test assembly");
 
   spdlog::info("input jj\n{}", jj.dump(2));
+  spdlog::info("xx_value {}", xx_value);
 
-  const auto ret = assembly::run_parser(jj);
+  const auto ret = assembly::run_parser(jj, xx_value);
 
-  if (ret) spdlog::info("OK GOT {}", *ret);
+  if (ret) spdlog::info("yy_value {}", *ret);
   else spdlog::warn("FAILED");
 }
 
@@ -33,7 +34,6 @@ int main(int argc, char* argv[])
   spdlog::set_level(spdlog::level::debug);
 
   test_fblist(5);
-
 
   test_assembly(nlohmann::json{
     {
@@ -45,7 +45,7 @@ int main(int argc, char* argv[])
       {"xx", -5},
       {"yy", 1},
     },
-  });
+  }, 0);
 
   test_assembly(nlohmann::json{
     {
@@ -59,14 +59,14 @@ int main(int argc, char* argv[])
     {
       {"opcode", "func_end"},
     },
-  });
+  }, 1);
 
   test_assembly(nlohmann::json{
     {
       {"opcode", "var_lookup"},
       {"var_id", "tmp000"},
     },
-  });
+  }, 2);
 
   return 0;
 }
