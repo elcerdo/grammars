@@ -43,11 +43,10 @@ struct OutputState {
   size_t list_count = 0;
 };
 
-static OutputState output_state;
-
 %}
 
-%param {InputState& in_state}
+%parse-param {InputState& in_state} {OutputState& out_state}
+%lex-param {InputState& in_state}
 
 %code
 {
@@ -73,8 +72,8 @@ static OutputState output_state;
 result: list        {
   $$ = $1.size();
 
-  output_state.list_count ++;
-  output_state.last_list_size = $$;
+  out_state.list_count ++;
+  out_state.last_list_size = $$;
 
   std::stringstream ss;
   ss << $1;
@@ -108,13 +107,15 @@ auto assembly::run_parser(const size_t nn) -> std::optional<size_t>
     0,
     nn,
   };
-  assembly::parser parser(in_state);
+  OutputState output_state;
+  assembly::parser parser(in_state, output_state);
 #if YYDEBUG
   parser.set_debug_stream(std::cout);
   parser.set_debug_level(1);
 #endif
-  spdlog::info("num_eval {}", output_state.list_count);
-  if (parser())
+  const auto parsing_err = parser();
+  spdlog::warn("num_eval {}", output_state.list_count);
+  if (parsing_err)
     return {};
   return output_state.last_list_size;
 }
