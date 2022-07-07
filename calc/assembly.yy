@@ -14,28 +14,28 @@
 
 #include <vector>
 
-struct InputState {
+struct LexerState {
   using Container = std::vector<nlohmann::json>;
   Container::const_iterator input_current;
   Container::const_iterator input_end;
 };
 
-struct OutputState {
+struct ParserState {
   size_t last_list_size = 0;
   size_t list_count = 0;
 };
 
 %}
 
-%parse-param {InputState& in_state} {OutputState& out_state}
-%lex-param {InputState& in_state}
+%parse-param {LexerState& in_state} {ParserState& out_state}
+%lex-param {LexerState& in_state}
 
 %code
 {
   namespace assembly
   {
     // Return the next token.
-    auto yylex(InputState& in_state) -> parser::symbol_type;
+    auto yylex(LexerState& in_state) -> parser::symbol_type;
   }
 }
 
@@ -69,7 +69,7 @@ list  : %empty      { $$ = {}; }
 
 %% /* Other definitions */
 
-auto assembly::yylex(InputState& in_state) -> parser::symbol_type
+auto assembly::yylex(LexerState& in_state) -> parser::symbol_type
 {
   if (in_state.input_current >= in_state.input_end)
     return parser::make_END();
@@ -88,14 +88,14 @@ auto assembly::run_parser(const nlohmann::json& jj) -> std::optional<size_t>
   if (!jj.is_array())
     return {};
 
-  const auto kk = jj.get<InputState::Container>();
+  const auto kk = jj.get<LexerState::Container>();
   spdlog::debug("kk {}", kk.size());
-  InputState in_state {
+  LexerState in_state {
     std::cbegin(kk),
     std::cend(kk),
   };
 
-  OutputState output_state;
+  ParserState output_state;
 
   assembly::parser parser(in_state, output_state);
 
