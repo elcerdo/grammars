@@ -9,6 +9,12 @@ include(nlohmann_json)
 
 find_package(BISON 3.2)
 
+bison_target(fblist_parser
+    fblist.yy
+    "${CMAKE_CURRENT_BINARY_DIR}/fblist_parser.tab.cpp"
+    DEFINES_FILE "${CMAKE_CURRENT_BINARY_DIR}/fblist_parser.tab.h"
+    )
+
 bison_target(assembly_parser
     assembly.yy
     "${CMAKE_CURRENT_BINARY_DIR}/assembly_parser.tab.cpp"
@@ -18,9 +24,9 @@ bison_target(assembly_parser
 add_executable(calc)
 target_sources(calc
     PUBLIC
-    assembly.h
+    fblist.h
     PRIVATE
-    ${BISON_assembly_parser_OUTPUTS}
+    ${BISON_fblist_parser_OUTPUTS}
     main.cpp
     )
 target_include_directories(calc
