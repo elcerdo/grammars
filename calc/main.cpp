@@ -41,6 +41,10 @@ int main(int argc, char* argv[])
   test_fblist(5);
 
   if (!test_assembly(nlohmann::json{
+    12,
+  }, 0, {})) return 1;
+
+  if (!test_assembly(nlohmann::json{
     {
       {"opcode", "foo"},
       {"xx", 42},

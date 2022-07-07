@@ -72,9 +72,14 @@ expr: func_call
 
 var_lookup: VAR_LOOKUP {
   const auto iter_value = parser_state.var_id_to_values.find($1);
-  const auto found_value = iter_value != std::cend(parser_state.var_id_to_values);
-  $$ = found_value ? iter_value->second : std::nan("invalid-var-id");
-  spdlog::debug("[var_lookup] var_id {}", $1);
+  if (iter_value == std::cend(parser_state.var_id_to_values))
+    throw syntax_error("bad var lookup");
+
+  assert(iter != std::cend(parser_state.var_id_to_values));
+  spdlog::debug("[var_lookup] id {} value {}",
+    $1,
+    iter_value->second);
+  $$ = iter_value->second;
 }
 
 func_call: FUNC_START func_args FUNC_END {
@@ -160,11 +165,11 @@ auto assembly::run_parser(const nlohmann::json& jj, const float xx_value) -> std
 
   try {
     const auto parsing_err = parser();
-    if (parsing_err)
-      return {};
+    spdlog::debug("[run_parser] parsing_err {}", parsing_err);
+    if (parsing_err) return {};
     return parser_state.result_value;
   } catch (nlohmann::json::exception& exc) {
-    spdlog::error("ASM JSON ERROR {}", exc.what());
+    spdlog::debug("[json_error] {}", exc.what());
     return {};
   }
 }
