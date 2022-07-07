@@ -96,7 +96,7 @@ auto fblist::run_parser(const size_t nn) -> std::optional<size_t>
   parser.set_debug_level(1);
 #endif
   const auto parsing_err = parser();
-  spdlog::warn("num_eval {}", output_state.list_count);
+  spdlog::debug("num_eval {}", output_state.list_count);
   if (parsing_err)
     return {};
   return output_state.last_list_size;

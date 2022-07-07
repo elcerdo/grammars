@@ -25,8 +25,10 @@ add_executable(calc)
 target_sources(calc
     PUBLIC
     fblist.h
+    assembly.h
     PRIVATE
     ${BISON_fblist_parser_OUTPUTS}
+    ${BISON_assembly_parser_OUTPUTS}
     main.cpp
     )
 target_include_directories(calc

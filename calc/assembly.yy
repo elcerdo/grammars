@@ -17,6 +17,7 @@
 struct InputState {
   size_t position = 0;
   const size_t position_max = 0;
+  const nlohmann::json root;
 };
 
 struct OutputState {
@@ -83,11 +84,12 @@ auto assembly::parser::error(const std::string& msg) -> void
   spdlog::error("ERROR {}", msg);
 }
 
-auto assembly::run_parser(const size_t nn) -> std::optional<size_t>
+auto assembly::run_parser(const nlohmann::json& jj) -> std::optional<size_t>
 {
   InputState in_state {
     0,
-    nn,
+    20,
+    jj,
   };
   OutputState output_state;
   assembly::parser parser(in_state, output_state);
@@ -96,7 +98,7 @@ auto assembly::run_parser(const size_t nn) -> std::optional<size_t>
   parser.set_debug_level(1);
 #endif
   const auto parsing_err = parser();
-  spdlog::warn("num_eval {}", output_state.list_count);
+  spdlog::debug("num_eval {}", output_state.list_count);
   if (parsing_err)
     return {};
   return output_state.last_list_size;
