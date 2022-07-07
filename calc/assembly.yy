@@ -15,9 +15,9 @@
 #include <vector>
 
 struct InputState {
-  size_t position = 0;
-  const size_t position_max = 0;
-  const nlohmann::json root;
+  using Container = std::vector<nlohmann::json>;
+  Container::const_iterator input_current;
+  Container::const_iterator input_end;
 };
 
 struct OutputState {
@@ -57,7 +57,7 @@ result: list        {
   out_state.list_count ++;
   out_state.last_list_size = $$;
 
-  spdlog::info("!!!! [{}] (10)",
+  spdlog::info("!!!! [{}] ({})",
     fmt::join($1, ","),
     $1.size());
 }
@@ -71,35 +71,48 @@ list  : %empty      { $$ = {}; }
 
 auto assembly::yylex(InputState& in_state) -> parser::symbol_type
 {
-  const size_t pos = in_state.position++;
-  return
-    pos >= in_state.position_max ? parser::make_END() :
-    pos % 3  == 0 ? parser::make_FIZZ() :
-    pos % 5  == 0 ? parser::make_BUZZ() :
-    parser::make_NUMBER(static_cast<int>(pos));
+  if (in_state.input_current >= in_state.input_end)
+    return parser::make_END();
+
+  const auto& current = *in_state.input_current++;
+  return parser::make_NUMBER(current.at("xx").get<int>());
 }
 
 auto assembly::parser::error(const std::string& msg) -> void
 {
-  spdlog::error("ERROR {}", msg);
+  spdlog::error("ASM ERROR {}", msg);
 }
 
 auto assembly::run_parser(const nlohmann::json& jj) -> std::optional<size_t>
 {
+  if (!jj.is_array())
+    return {};
+
+  const auto kk = jj.get<InputState::Container>();
+  spdlog::debug("kk {}", kk.size());
   InputState in_state {
-    0,
-    20,
-    jj,
+    std::cbegin(kk),
+    std::cend(kk),
   };
+
   OutputState output_state;
+
   assembly::parser parser(in_state, output_state);
+
 #if YYDEBUG
   parser.set_debug_stream(std::cout);
   parser.set_debug_level(1);
 #endif
-  const auto parsing_err = parser();
-  spdlog::debug("num_eval {}", output_state.list_count);
-  if (parsing_err)
+
+  try {
+    const auto parsing_err = parser();
+
+    spdlog::debug("num_eval {}", output_state.list_count);
+
+    if (parsing_err)
+      return {};
+    return output_state.last_list_size;
+  } catch (nlohmann::json::exception& exc) {
     return {};
-  return output_state.last_list_size;
+  }
 }

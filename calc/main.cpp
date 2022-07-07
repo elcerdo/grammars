@@ -11,7 +11,7 @@ void test_fblist(const size_t kk_max)
     spdlog::info("{:03d} =============", kk);
     const auto ret = fblist::run_parser(kk);
     if (ret) spdlog::info("OK GOT {}", *ret);
-    else spdlog::info("ERROR");
+    else spdlog::warn("FAILED");
   }
 }
 
@@ -25,27 +25,39 @@ void test_assembly(const nlohmann::json& jj)
   const auto ret = assembly::run_parser(jj);
 
   if (ret) spdlog::info("OK GOT {}", *ret);
-  else spdlog::info("ERROR");
+  else spdlog::warn("FAILED");
 }
 
 int main(int argc, char* argv[])
 {
-  // spdlog::set_level(spdlog::level::debug);
+  spdlog::set_level(spdlog::level::debug);
 
   test_fblist(5);
 
-  const auto jj_test = nlohmann::json{
+
+  test_assembly(nlohmann::json{
     {
       {"opcode", "foo"},
       {"xx", 42},
     },
     {
       {"opcode", "bar"},
-      {"xx", 42},
+      {"xx", -5},
+      {"yy", 1},
     },
-  };
+  });
 
-  test_assembly(jj_test);
+  test_assembly(nlohmann::json{
+    {
+      {"opcode", "foo"},
+      {"zz", 42},
+    },
+    {
+      {"opcode", "bar"},
+      {"xx", -5},
+      {"yy", 1},
+    },
+  });
 
   return 0;
 }

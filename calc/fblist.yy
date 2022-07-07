@@ -56,7 +56,7 @@ result: list        {
   out_state.list_count ++;
   out_state.last_list_size = $$;
 
-  spdlog::info("!!!! [{}] (10)",
+  spdlog::info("!!!! [{}] ({})",
     fmt::join($1, ","),
     $1.size());
 }
@@ -80,7 +80,7 @@ auto fblist::yylex(InputState& in_state) -> parser::symbol_type
 
 auto fblist::parser::error(const std::string& msg) -> void
 {
-  spdlog::error("ERROR {}", msg);
+  spdlog::error("FBLIST ERROR {}", msg);
 }
 
 auto fblist::run_parser(const size_t nn) -> std::optional<size_t>
