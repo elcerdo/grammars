@@ -13,10 +13,14 @@
 #include <spdlog/fmt/bundled/ranges.h>
 
 #include <vector>
+#include <functional>
+#include <unordered_map>
 
 using FuncId = size_t;
 using VarId = std::string;
 using Scalar = float;
+
+using NullaryFunctor = std::function<Scalar()>;
 
 struct LexerState {
   using Container = std::vector<nlohmann::json>;
@@ -27,6 +31,7 @@ struct LexerState {
 struct ParserState {
   float result_value;
   std::unordered_map<VarId, Scalar> var_id_to_values;
+  std::unordered_map<FuncId, NullaryFunctor> func_id_to_nullary_functors;
 };
 
 %}
@@ -144,6 +149,7 @@ auto assembly::run_parser(const nlohmann::json& jj, const float xx_value) -> std
 
   ParserState parser_state;
   parser_state.var_id_to_values["xx"] = xx_value;
+  parser_state.func_id_to_nullary_functors[FUNC_ZERO] = []() -> Scalar { return 0; };
 
   assembly::parser parser(lex_state, parser_state);
 

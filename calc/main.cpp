@@ -70,24 +70,24 @@ int main(int argc, char* argv[])
     if (!test_assembly(opcodes, 5, 5)) return 1;
   }
 
-  { // simple 0-arg func program
+  { // simple 0-arg func program that returns zero
     const auto opcodes = nlohmann::json{
       {
         {"opcode", "func_start"},
-        {"func_id", 0xf0},
+        {"func_id", assembly::FUNC_ZERO},
       },
       {
         {"opcode", "func_end"},
       },
     };
-    if (!test_assembly(opcodes, 3, 42.5)) return 1;
-    if (!test_assembly(opcodes, 5, 42.5)) return 1;
+    if (!test_assembly(opcodes, 3, 0)) return 1;
+    if (!test_assembly(opcodes, 5, 0)) return 1;
   }
 
   if (!test_assembly(nlohmann::json{
     {
       {"opcode", "func_start"},
-      {"func_id", 0xf0},
+      {"func_id", assembly::FUNC_ZERO},
     },
     {
       {"opcode", "func_arg"},
