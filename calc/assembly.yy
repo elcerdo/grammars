@@ -14,6 +14,10 @@
 
 #include <vector>
 
+using FuncId = size_t;
+using VarId = std::string;
+using Scalar = float;
+
 struct LexerState {
   using Container = std::vector<nlohmann::json>;
   Container::const_iterator input_current;
@@ -22,10 +26,8 @@ struct LexerState {
 
 struct ParserState {
   float result_value;
+  std::unordered_map<VarId, Scalar> var_id_to_values;
 };
-
-using FuncId = size_t;
-using VarId = std::string;
 
 %}
 
@@ -46,7 +48,7 @@ using VarId = std::string;
 %token<VarId> FUNC_ARG VAR_LOOKUP
 %token FUNC_END
 
-%nterm<float> expr func_call var_lookup
+%nterm<Scalar> expr func_call var_lookup
 
 %nterm<std::vector<VarId>> func_args
 
@@ -64,7 +66,9 @@ expr: func_call
     | var_lookup
 
 var_lookup: VAR_LOOKUP {
-  $$ = -2.3f;
+  const auto iter_value = parser_state.var_id_to_values.find($1);
+  const auto found_value = iter_value != std::cend(parser_state.var_id_to_values);
+  $$ = found_value ? iter_value->second : std::nan("invalid-var-id");
   spdlog::debug("[var_lookup] var_id {}", $1);
 }
 
@@ -139,6 +143,7 @@ auto assembly::run_parser(const nlohmann::json& jj, const float xx_value) -> std
   };
 
   ParserState parser_state;
+  parser_state.var_id_to_values["xx"] = xx_value;
 
   assembly::parser parser(lex_state, parser_state);
 
