@@ -29,15 +29,15 @@ using VarId = std::string;
 
 %}
 
-%parse-param {LexerState& in_state} {ParserState& out_state}
-%lex-param {LexerState& in_state}
+%parse-param {LexerState& lex_state} {ParserState& parser_state}
+%lex-param {LexerState& lex_state}
 
 %code
 {
   namespace assembly
   {
     // Return the next token.
-    auto yylex(LexerState& in_state) -> parser::symbol_type;
+    auto yylex(LexerState& lex_state) -> parser::symbol_type;
   }
 }
 
@@ -55,9 +55,9 @@ using VarId = std::string;
 %% /* Grammar rules and actions follow */
 
 result: expr {
-  out_state.result_value = $1;
+  parser_state.result_value = $1;
   spdlog::debug("[result] value {}",
-    out_state.result_value);
+    parser_state.result_value);
 }
 
 expr: func_call
@@ -93,12 +93,12 @@ constexpr size_t shash(char const * ii)
   return seed;
 }
 
-auto assembly::yylex(LexerState& in_state) -> parser::symbol_type
+auto assembly::yylex(LexerState& lex_state) -> parser::symbol_type
 {
-  if (in_state.input_current >= in_state.input_end)
+  if (lex_state.input_current >= lex_state.input_end)
     return parser::make_END();
 
-  const auto& current = *in_state.input_current++;
+  const auto& current = *lex_state.input_current++;
 
   constexpr auto func_start_hash = shash("func_start");
   constexpr auto func_arg_hash = shash("func_arg");
@@ -133,14 +133,14 @@ auto assembly::run_parser(const nlohmann::json& jj, const float xx_value) -> std
 
   const auto kk = jj.get<LexerState::Container>();
   spdlog::debug("[run_parser] num_opcodes {}", kk.size());
-  LexerState in_state {
+  LexerState lex_state {
     std::cbegin(kk),
     std::cend(kk),
   };
 
-  ParserState output_state;
+  ParserState parser_state;
 
-  assembly::parser parser(in_state, output_state);
+  assembly::parser parser(lex_state, parser_state);
 
 #if YYDEBUG
   parser.set_debug_stream(std::cout);
@@ -151,7 +151,7 @@ auto assembly::run_parser(const nlohmann::json& jj, const float xx_value) -> std
     const auto parsing_err = parser();
     if (parsing_err)
       return {};
-    return output_state.result_value;
+    return parser_state.result_value;
   } catch (nlohmann::json::exception& exc) {
     spdlog::error("ASM JSON ERROR {}", exc.what());
     return {};
