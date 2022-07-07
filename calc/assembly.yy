@@ -26,6 +26,8 @@ using UnaryFunctor = std::function<Scalar(Scalar)>;
 using BinaryFunctor = std::function<Scalar(Scalar, Scalar)>;
 using AnyFunctor = std::variant<NullaryFunctor, UnaryFunctor, BinaryFunctor>;
 
+using VarIdToScalars = std::unordered_map<VarId, Scalar>;
+
 struct LexerState {
   using Container = std::vector<nlohmann::json>;
   Container::const_iterator input_current;
@@ -34,7 +36,7 @@ struct LexerState {
 
 struct ParserState {
   float result_value;
-  std::unordered_map<VarId, Scalar> var_id_to_values;
+  VarIdToScalars var_id_to_scalars;
   std::unordered_map<FuncId, NullaryFunctor> func_id_to_nullary_functors;
   std::unordered_map<FuncId, UnaryFunctor> func_id_to_unary_functors;
   std::unordered_map<FuncId, BinaryFunctor> func_id_to_binary_functors;
@@ -76,14 +78,14 @@ expr: func_call
     | var_lookup
 
 var_lookup: VAR_LOOKUP {
-  const auto iter_value = parser_state.var_id_to_values.find($1);
-  if (iter_value == std::cend(parser_state.var_id_to_values))
+  const auto iter_scalar = parser_state.var_id_to_scalars.find($1);
+  if (iter_scalar == std::cend(parser_state.var_id_to_scalars))
     throw syntax_error("unknown var");
-  assert(iter_value != std::cend(parser_state.var_id_to_values));
+  assert(iter_scalar != std::cend(parser_state.var_id_to_scalars));
   spdlog::debug("[var_lookup] id {} value {}",
     $1,
-    iter_value->second);
-  $$ = iter_value->second;
+    iter_scalar->second);
+  $$ = iter_scalar->second;
 }
 
 func_call: FUNC_START func_args FUNC_END {
@@ -195,7 +197,7 @@ auto assembly::run_parser(const nlohmann::json& jj, const float xx_value) -> std
   };
 
   ParserState parser_state;
-  parser_state.var_id_to_values["xx"] = xx_value;
+  parser_state.var_id_to_scalars["xx"] = xx_value;
   parser_state.func_id_to_nullary_functors[FUNC_ZERO] = []() -> Scalar { return 0; };
   parser_state.func_id_to_nullary_functors[FUNC_ONE] = []() -> Scalar { return 1; };
   parser_state.func_id_to_unary_functors[FUNC_DOUBLE] = [](const Scalar xx) -> Scalar { return 2 * xx; };
