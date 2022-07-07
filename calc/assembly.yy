@@ -45,19 +45,33 @@ using VarId = std::string;
 %token<FuncId> FUNC_START
 %token<VarId> FUNC_ARG
 %token FUNC_END
+%token<VarId> VAR_LOOKUP
 
+/* %nterm<float> expr
+%nterm<float> func_call */
 %nterm<std::vector<VarId>> func_args
 
 %start result
 
 %% /* Grammar rules and actions follow */
 
-result: func_call {
+result: expr {
   out_state.result_count ++;
-  spdlog::info("[result] result_count {}", out_state.result_count);
+  spdlog::info("[result] result_count {} result {}",
+    out_state.result_count,
+    "$1");
+}
+
+expr: func_call
+    | var_lookup
+
+var_lookup: VAR_LOOKUP {
+  /* $$ = -2.3f; */
+  spdlog::info("[var_lookup] var_id \"{}\"", $1);
 }
 
 func_call: FUNC_START func_args FUNC_END {
+  /* $$ = 42.5f; */
   spdlog::info("[func_call] func_id {} args ({})",
     $1,
     fmt::join($2, ","));
@@ -81,8 +95,6 @@ constexpr size_t shash(char const * ii)
   return seed;
 }
 
-const
-
 auto assembly::yylex(LexerState& in_state) -> parser::symbol_type
 {
   if (in_state.input_current >= in_state.input_end)
@@ -93,6 +105,7 @@ auto assembly::yylex(LexerState& in_state) -> parser::symbol_type
   constexpr auto func_start_hash = shash("func_start");
   constexpr auto func_arg_hash = shash("func_arg");
   constexpr auto func_end_hash = shash("func_end");
+  constexpr auto var_lookup_hash = shash("var_lookup");
   const auto opcode_hash = shash(current.at("opcode").get<std::string>().c_str());
 
   switch (opcode_hash) {
@@ -102,6 +115,8 @@ auto assembly::yylex(LexerState& in_state) -> parser::symbol_type
       return parser::make_FUNC_ARG(current.at("var_id").get<VarId>());
     case func_end_hash:
       return parser::make_FUNC_END();
+    case var_lookup_hash:
+      return parser::make_VAR_LOOKUP(current.at("var_id").get<VarId>());
     default:
       assert(false);
       return parser::make_END();
@@ -119,7 +134,7 @@ auto assembly::run_parser(const nlohmann::json& jj) -> std::optional<size_t>
     return {};
 
   const auto kk = jj.get<LexerState::Container>();
-  spdlog::debug("kk {}", kk.size());
+  spdlog::debug("num_opcodes {}", kk.size());
   LexerState in_state {
     std::cbegin(kk),
     std::cend(kk),

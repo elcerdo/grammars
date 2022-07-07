@@ -61,5 +61,12 @@ int main(int argc, char* argv[])
     },
   });
 
+  test_assembly(nlohmann::json{
+    {
+      {"opcode", "var_lookup"},
+      {"var_id", "tmp000"},
+    },
+  });
+
   return 0;
 }
