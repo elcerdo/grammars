@@ -77,7 +77,7 @@ var_lookup: VAR_LOOKUP {
   const auto iter_value = parser_state.var_id_to_values.find($1);
   if (iter_value == std::cend(parser_state.var_id_to_values))
     throw syntax_error("unknown var");
-  assert(iter != std::cend(parser_state.var_id_to_values));
+  assert(iter_value != std::cend(parser_state.var_id_to_values));
   spdlog::debug("[var_lookup] id {} value {}",
     $1,
     iter_value->second);
@@ -93,7 +93,7 @@ func_call: FUNC_START func_args FUNC_END {
       const auto iter_functor = func_id_to_functors.find($1);
       if (iter_functor == std::cend(func_id_to_functors))
         throw syntax_error("unknown nullary func");
-      assert(iter != std::cend(func_id_to_functors));
+      assert(iter_value != std::cend(func_id_to_functors));
       spdlog::debug("[func_call] func {} args ({})",
         $1,
         fmt::join($2, ","));
@@ -106,7 +106,7 @@ func_call: FUNC_START func_args FUNC_END {
       const auto iter_functor = func_id_to_functors.find($1);
       if (iter_functor == std::cend(func_id_to_functors))
         throw syntax_error("unknown unary func");
-      assert(iter != std::cend(func_id_to_functors));
+      assert(iter_value != std::cend(func_id_to_functors));
       spdlog::debug("[func_call] func {} args ({})",
         $1,
         fmt::join($2, ","));
@@ -119,7 +119,7 @@ func_call: FUNC_START func_args FUNC_END {
       const auto iter_functor = func_id_to_functors.find($1);
       if (iter_functor == std::cend(func_id_to_functors))
         throw syntax_error("unknown binary func");
-      assert(iter != std::cend(func_id_to_functors));
+      assert(iter_value != std::cend(func_id_to_functors));
       spdlog::debug("[func_call] func {} args ({})",
         $1,
         fmt::join($2, ","));
