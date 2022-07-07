@@ -15,6 +15,7 @@
 #include <vector>
 #include <functional>
 #include <unordered_map>
+#include <variant>
 
 using FuncId = size_t;
 using VarId = std::string;
@@ -23,6 +24,7 @@ using Scalar = float;
 using NullaryFunctor = std::function<Scalar()>;
 using UnaryFunctor = std::function<Scalar(Scalar)>;
 using BinaryFunctor = std::function<Scalar(Scalar, Scalar)>;
+using AnyFunctor = std::variant<NullaryFunctor, UnaryFunctor, BinaryFunctor>;
 
 struct LexerState {
   using Container = std::vector<nlohmann::json>;
@@ -93,7 +95,7 @@ func_call: FUNC_START func_args FUNC_END {
       const auto iter_functor = func_id_to_functors.find($1);
       if (iter_functor == std::cend(func_id_to_functors))
         throw syntax_error("unknown nullary func");
-      assert(iter_value != std::cend(func_id_to_functors));
+      assert(iter_functor != std::cend(func_id_to_functors));
       spdlog::debug("[func_call] func {} args ({})",
         $1,
         fmt::join($2, ","));
@@ -106,7 +108,7 @@ func_call: FUNC_START func_args FUNC_END {
       const auto iter_functor = func_id_to_functors.find($1);
       if (iter_functor == std::cend(func_id_to_functors))
         throw syntax_error("unknown unary func");
-      assert(iter_value != std::cend(func_id_to_functors));
+      assert(iter_functor != std::cend(func_id_to_functors));
       spdlog::debug("[func_call] func {} args ({})",
         $1,
         fmt::join($2, ","));
@@ -119,7 +121,7 @@ func_call: FUNC_START func_args FUNC_END {
       const auto iter_functor = func_id_to_functors.find($1);
       if (iter_functor == std::cend(func_id_to_functors))
         throw syntax_error("unknown binary func");
-      assert(iter_value != std::cend(func_id_to_functors));
+      assert(iter_functor != std::cend(func_id_to_functors));
       spdlog::debug("[func_call] func {} args ({})",
         $1,
         fmt::join($2, ","));
@@ -170,7 +172,7 @@ auto assembly::yylex(LexerState& lex_state) -> parser::symbol_type
     case var_lookup_hash:
       return parser::make_VAR_LOOKUP(current.at("var_id").get<VarId>());
     default:
-      assert(false);
+      throw parser::syntax_error("invalid opcode");
       return parser::make_END();
   }
 }
