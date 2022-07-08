@@ -40,6 +40,8 @@ int main(int argc, char* argv[])
 
   test_fblist(5);
 
+  using assembly::FuncId;
+
   if (!test_assembly(nlohmann::json{
     12,
   }, 0, {})) return 1;
@@ -78,7 +80,7 @@ int main(int argc, char* argv[])
     const auto opcodes = nlohmann::json{
       {
         {"opcode", "func_start"},
-        {"func_id", assembly::FUNC_UNDEFINED},
+        {"func_id", FuncId::Undefined},
       },
       {
         {"opcode", "func_end"},
@@ -91,7 +93,7 @@ int main(int argc, char* argv[])
     const auto opcodes = nlohmann::json{
       {
         {"opcode", "func_start"},
-        {"func_id", assembly::FUNC_ZERO},
+        {"func_id", FuncId::Zero},
       },
       {
         {"opcode", "func_end"},
@@ -105,7 +107,7 @@ int main(int argc, char* argv[])
     const auto opcodes = nlohmann::json{
       {
         {"opcode", "func_start"},
-        {"func_id", assembly::FUNC_ONE},
+        {"func_id", FuncId::One},
       },
       {
         {"opcode", "func_end"},
@@ -119,7 +121,7 @@ int main(int argc, char* argv[])
     const auto opcodes = nlohmann::json{
       {
         {"opcode", "func_start"},
-        {"func_id", assembly::FUNC_DOUBLE},
+        {"func_id", FuncId::TimesTwo},
       },
       {
         {"opcode", "var_lookup"},
@@ -138,11 +140,11 @@ int main(int argc, char* argv[])
     const auto opcodes = nlohmann::json{
       {
         {"opcode", "func_start"},
-        {"func_id", assembly::FUNC_DOUBLE},
+        {"func_id", FuncId::TimesTwo},
       },
       {
         {"opcode", "func_start"},
-        {"func_id", assembly::FUNC_MINUS_ONE},
+        {"func_id", FuncId::MinusOne},
       },
       {
         {"opcode", "var_lookup"},
@@ -164,11 +166,11 @@ int main(int argc, char* argv[])
     const auto opcodes = nlohmann::json{
       {
         {"opcode", "func_start"},
-        {"func_id", assembly::FUNC_ADD},
+        {"func_id", FuncId::Add},
       },
       {
         {"opcode", "func_start"},
-        {"func_id", assembly::FUNC_ONE},
+        {"func_id", FuncId::One},
       },
       {
         {"opcode", "func_end"},

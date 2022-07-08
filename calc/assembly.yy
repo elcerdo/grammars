@@ -17,7 +17,9 @@
 #include <unordered_map>
 #include <variant>
 
-using FuncId = size_t;
+template<class> inline constexpr bool always_false_v = false;
+
+using assembly::FuncId;
 using VarId = std::string;
 using Scalar = float;
 
@@ -27,6 +29,7 @@ using BinaryFunctor = std::function<Scalar(Scalar, Scalar)>;
 using AnyFunctor = std::variant<NullaryFunctor, UnaryFunctor, BinaryFunctor>;
 
 using VarIdToScalars = std::unordered_map<VarId, Scalar>;
+using FuncIdToAnyFunctors = std::unordered_map<FuncId, AnyFunctor>;
 
 struct LexerState {
   using Container = std::vector<nlohmann::json>;
@@ -37,9 +40,7 @@ struct LexerState {
 struct ParserState {
   float result_value;
   VarIdToScalars var_id_to_scalars;
-  std::unordered_map<FuncId, NullaryFunctor> func_id_to_nullary_functors;
-  std::unordered_map<FuncId, UnaryFunctor> func_id_to_unary_functors;
-  std::unordered_map<FuncId, BinaryFunctor> func_id_to_binary_functors;
+  FuncIdToAnyFunctors func_id_to_functors;
 };
 
 %}
@@ -89,51 +90,42 @@ var_lookup: VAR_LOOKUP {
 }
 
 func_call: FUNC_START func_args FUNC_END {
-  const auto num_args = $2.size();
-  switch (num_args) {
-  case 0:
-    { // dispatch nullary
-      const auto& func_id_to_functors = parser_state.func_id_to_nullary_functors;
-      const auto iter_functor = func_id_to_functors.find($1);
-      if (iter_functor == std::cend(func_id_to_functors))
-        throw syntax_error("unknown nullary func");
-      assert(iter_functor != std::cend(func_id_to_functors));
-      spdlog::debug("[func_call] func {} args ({})",
-        $1,
-        fmt::join($2, ","));
-      $$ = iter_functor->second();
+  const auto iter_functor = parser_state.func_id_to_functors.find($1);
+  if (iter_functor == std::cend(parser_state.func_id_to_functors))
+    throw syntax_error("unknown func");
+  assert(iter_functor != std::cend(parser_state.func_id_to_functors));
+  spdlog::debug("[func_call] func {} args ({})",
+    $1,
+    fmt::join($2, ","));
+
+  const auto maybe_value = std::visit([&](auto&& ff) -> std::optional<Scalar> {
+    using T = std::decay_t<decltype(ff)>;
+    if constexpr (std::is_same<T, NullaryFunctor>::value) {
+      if ($2.size() == 0)
+        return ff();
+      return {};
+    } else if constexpr (std::is_same<T, UnaryFunctor>::value) {
+      if ($2.size() == 1)
+        return ff($2[0]);
+      return {};
+    } else if constexpr (std::is_same<T, BinaryFunctor>::value) {
+      if ($2.size() == 2)
+        return ff($2[0], $2[1]);
+      return {};
     }
-    break;
-  case 1:
-    { // dispatch unary
-      const auto& func_id_to_functors = parser_state.func_id_to_unary_functors;
-      const auto iter_functor = func_id_to_functors.find($1);
-      if (iter_functor == std::cend(func_id_to_functors))
-        throw syntax_error("unknown unary func");
-      assert(iter_functor != std::cend(func_id_to_functors));
-      spdlog::debug("[func_call] func {} args ({})",
-        $1,
-        fmt::join($2, ","));
-      $$ = iter_functor->second($2[0]);
-    }
-    break;
-  case 2:
-    { // dispatch binary
-      const auto& func_id_to_functors = parser_state.func_id_to_binary_functors;
-      const auto iter_functor = func_id_to_functors.find($1);
-      if (iter_functor == std::cend(func_id_to_functors))
-        throw syntax_error("unknown binary func");
-      assert(iter_functor != std::cend(func_id_to_functors));
-      spdlog::debug("[func_call] func {} args ({})",
-        $1,
-        fmt::join($2, ","));
-      $$ = iter_functor->second($2[0], $2[1]);
-    }
-    break;
-  default:
-    throw syntax_error("bad num args");
-    break;
-  }
+    else
+      static_assert(always_false_v<T>, "non-exhaustive visitor!");
+    return true;
+  }, iter_functor->second);
+
+  if (!maybe_value)
+    throw syntax_error("wrong func call");
+
+  spdlog::debug("[func_call] value {}",
+    *maybe_value);
+
+  assert(maybe_value);
+  $$ = *maybe_value;
 }
 
 func_args: %empty { $$ = {}; }
@@ -198,11 +190,11 @@ auto assembly::run_parser(const nlohmann::json& jj, const float xx_value) -> std
 
   ParserState parser_state;
   parser_state.var_id_to_scalars["xx"] = xx_value;
-  parser_state.func_id_to_nullary_functors[FUNC_ZERO] = []() -> Scalar { return 0; };
-  parser_state.func_id_to_nullary_functors[FUNC_ONE] = []() -> Scalar { return 1; };
-  parser_state.func_id_to_unary_functors[FUNC_DOUBLE] = [](const Scalar xx) -> Scalar { return 2 * xx; };
-  parser_state.func_id_to_unary_functors[FUNC_MINUS_ONE] = [](const Scalar xx) -> Scalar { return xx - 1; };
-  parser_state.func_id_to_binary_functors[FUNC_ADD] = [](const Scalar xx, const Scalar yy) -> Scalar { return xx + yy; };
+  parser_state.func_id_to_functors[FuncId::Zero] = []() -> Scalar { return 0; };
+  parser_state.func_id_to_functors[FuncId::One] = []() -> Scalar { return 1; };
+  parser_state.func_id_to_functors[FuncId::TimesTwo] = [](const Scalar xx) -> Scalar { return 2 * xx; };
+  parser_state.func_id_to_functors[FuncId::MinusOne] = [](const Scalar xx) -> Scalar { return xx - 1; };
+  parser_state.func_id_to_functors[FuncId::Add] = [](const Scalar xx, const Scalar yy) -> Scalar { return xx + yy; };
 
   assembly::parser parser(lex_state, parser_state);
 
