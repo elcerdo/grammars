@@ -182,8 +182,8 @@ int main(int argc, char* argv[])
       },
     };
     if (!test_assembly(opcodes, 3, 4)) return 1;
-    if (!test_assembly(opcodes, 5, 8)) return 1;
-    if (!test_assembly(opcodes, -1, -4)) return 1;
+    if (!test_assembly(opcodes, 5, 6)) return 1;
+    if (!test_assembly(opcodes, -1, 0)) return 1;
   }
 
   return 0;
