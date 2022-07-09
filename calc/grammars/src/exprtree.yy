@@ -21,6 +21,8 @@
 template<class> inline constexpr bool always_false_v = false;
 
 using exprtree::TypeId;
+using IdentId = std::string;
+
 /*using VarId = std::string;
 using Scalar = float;
 
@@ -55,22 +57,39 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 
 %token END 0
 %token<TypeId> TYPE
-%token SEP
+%token SEP PAREN_OPEN
+%token<IdentId> IDENTIFIER
 /* %token<FuncId> FUNC_START
 %token FUNC_END
-%token<VarId> VAR_LOOKUP
+%token<VarId> VAR_LOOKUP*/
 
-%nterm<Scalar> expr func_call var_lookup
+%nterm<std::tuple<TypeId,IdentId>> func_arg
+%nterm<std::vector<std::tuple<TypeId,IdentId>>> func_args
+/*%nterm<Scalar> expr func_call var_lookup
 %nterm<std::vector<Scalar>> func_args */
 
 %start result
 
 %% /* Grammar rules and actions follow */
 
-result: %empty
-      | func_pro
+result: func_pro END
 
-func_pro: TYPE SEP { spdlog::info("[type] {}", $1); }
+func_pro: TYPE SEP IDENTIFIER PAREN_OPEN func_args {
+  std::vector<std::string> func_args_;
+  for (const auto& func_arg : $5)
+    func_args_.emplace_back(fmt::format("({},{})",
+      std::get<0>(func_arg),
+      std::get<1>(func_arg)));
+  spdlog::info("[func_pro] type {} identifier \"{}\" args [{}]",
+    $1,
+    $3,
+    fmt::join(func_args_, ", "));
+}
+
+func_args: %empty { $$ = {}; }
+         | func_args func_arg { $$ = $1; $$.emplace_back($2); }
+
+func_arg: TYPE SEP IDENTIFIER { $$ = std::make_tuple($1, $3); }
 
 /*result: expr {
   parser_state.result_value = $1;
@@ -153,18 +172,33 @@ constexpr size_t shash(char const * ii)
 auto exprtree::yylex(LexerState& lex_state) -> parser::symbol_type
 {
   const auto current = lex_state.current;
-  const auto advance = [&lex_state, &current](const std::smatch& match) {
+  const auto advance_match = [&lex_state, &current](const std::smatch& match) -> void {
     lex_state.current = match.suffix().str();
     spdlog::warn("[advance] \"{}\" -> \"{}\"",
       current,
       lex_state.current);
   };
+  const auto advance_tick = [&lex_state, &current](const size_t nn) -> void {
+    lex_state.current.erase(0, nn);
+    spdlog::warn("[advance] \"{}\" -> \"{}\"",
+      current,
+      lex_state.current);
+    assert(nn > 0);
+  };
+
+  if (!current.empty()) { // single character
+    const auto letter = current[0];
+    switch (letter) {
+      case '(': advance_tick(1); return parser::make_PAREN_OPEN();
+      default: break;
+    }
+  }
 
   { // separator
     static const std::regex re("^ +");
     std::smatch match;
     if (std::regex_search(current, match, re)) {
-      advance(match);
+      advance_match(match);
       return parser::make_SEP();
     }
   }
@@ -176,12 +210,21 @@ auto exprtree::yylex(LexerState& lex_state) -> parser::symbol_type
     std::smatch match;
     if (std::regex_search(current, match, re)) {
       const auto type_h = shash(match[1].str().c_str());
-      advance(match);
+      advance_match(match);
       switch(type_h) {
         case float_h: return parser::make_TYPE(TypeId::Float);
         case vec2_h: return parser::make_TYPE(TypeId::Vec2);
         default: assert(false); return parser::make_END();
       }
+    }
+  }
+
+  { // identifier
+    static const std::regex re("^[a-z]+");
+    std::smatch match;
+    if (std::regex_search(current, match, re)) {
+      advance_match(match);
+      return parser::make_IDENTIFIER(match[0]);
     }
   }
 
