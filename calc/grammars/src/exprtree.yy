@@ -72,10 +72,13 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 
 %% /* Grammar rules and actions follow */
 
-result: statements
+skip: %empty
+    | SEP
+
+result: statements skip
 
 statements: %empty
-          | statements statement SEMICOLON
+          | statements skip statement SEMICOLON
 
 statement: %empty
          | func_pro
@@ -99,7 +102,7 @@ func_pro: TYPE SEP IDENTIFIER PAREN_OPEN func_args PAREN_CLOSE {
 
 func_args: %empty { $$ = {}; }
          | func_arg { $$ = {}; $$.emplace_back($1); }
-         | func_args COMMA SEP func_arg { $$ = $1; $$.emplace_back($4); }
+         | func_args COMMA skip func_arg { $$ = $1; $$.emplace_back($4); }
 
 func_arg: TYPE SEP IDENTIFIER { $$ = std::make_tuple($1, $3); }
 
@@ -210,7 +213,7 @@ auto exprtree::yylex(LexerState& lex_state) -> parser::symbol_type
   }
 
   { // separator
-    static const std::regex re("^ +");
+    static const std::regex re("^[ \n]+");
     std::smatch match;
     if (std::regex_search(current, match, re)) {
       advance_match(match);
