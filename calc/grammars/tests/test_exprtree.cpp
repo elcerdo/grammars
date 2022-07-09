@@ -25,11 +25,20 @@ TEST_CASE("test lemon", "[grammars][lemon]")
   REQUIRE(lemon::countArcs(graph) == 1);
 }
 
-TEST_CASE("test exprtree", "[grammars][exprtree]")
+void test_exprtree(const std::string& input, const bool ret_)
 {
   spdlog::critical("test exprtree");
 
-  const auto ret = exprtree::run_parser("float coucou(float aa, float bb)");
-  REQUIRE(ret);
+  spdlog::info("input\n{}", input);
 
+  const auto ret = exprtree::run_parser(input);
+
+  spdlog::info(ret ? "SUCCESS" : "FAILED");
+
+  REQUIRE(static_cast<bool>(ret) == ret_);
+}
+
+TEST_CASE("test exprtree", "[grammars][exprtree]")
+{
+  test_exprtree("float coucou(float aa, float bb)", true);
 }

@@ -55,6 +55,7 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 
 %token END 0
 %token<TypeId> TYPE
+%token SEP
 /* %token<FuncId> FUNC_START
 %token FUNC_END
 %token<VarId> VAR_LOOKUP
@@ -69,7 +70,7 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 result: %empty
       | func_pro
 
-func_pro: TYPE { spdlog::info("[type] {}", $1); }
+func_pro: TYPE SEP { spdlog::info("[type] {}", $1); }
 
 /*result: expr {
   parser_state.result_value = $1;
@@ -152,57 +153,39 @@ constexpr size_t shash(char const * ii)
 auto exprtree::yylex(LexerState& lex_state) -> parser::symbol_type
 {
   const auto current = lex_state.current;
+  const auto advance = [&lex_state, &current](const std::smatch& match) {
+    lex_state.current = match.suffix().str();
+    spdlog::warn("[advance] \"{}\" -> \"{}\"",
+      current,
+      lex_state.current);
+  };
 
-  { // types
+  { // separator
+    static const std::regex re("^ +");
+    std::smatch match;
+    if (std::regex_search(current, match, re)) {
+      advance(match);
+      return parser::make_SEP();
+    }
+  }
+
+  { // type
     static const std::regex re("^(float|vec2)");
     constexpr auto float_h = shash("float");
     constexpr auto vec2_h = shash("vec2");
-
     std::smatch match;
     if (std::regex_search(current, match, re)) {
       const auto type_h = shash(match[1].str().c_str());
-
-      spdlog::warn("TYPE {} float {} vec2 {} {}",
-        match[0].str(),
-        type_h == float_h,
-        type_h == vec2_h,
-        match.size());
-
-      lex_state.current = match.suffix().str(); // advance head
-
-      spdlog::info("current \"{}\"", lex_state.current);
-
+      advance(match);
       switch(type_h) {
         case float_h: return parser::make_TYPE(TypeId::Float);
         case vec2_h: return parser::make_TYPE(TypeId::Vec2);
-        default: assert(false);
+        default: assert(false); return parser::make_END();
       }
     }
   }
 
   return parser::make_END();
-/*
-  if (lex_state.input_current >= lex_state.input_end)
-    return parser::make_END();
-
-  const auto& current = *lex_state.input_current++;
-
-  constexpr auto func_start_hash = shash("func_start");
-  constexpr auto func_end_hash = shash("func_end");
-  constexpr auto var_lookup_hash = shash("var_lookup");
-  const auto opcode_hash = shash(current.at("opcode").get<std::string>().c_str());
-
-  switch (opcode_hash) {
-    case func_start_hash:
-      return parser::make_FUNC_START(current.at("func_id").get<FuncId>());
-    case func_end_hash:
-      return parser::make_FUNC_END();
-    case var_lookup_hash:
-      return parser::make_VAR_LOOKUP(current.at("var_id").get<VarId>());
-    default:
-      throw parser::syntax_error("invalid opcode");
-      return parser::make_END();
-  }*/
 }
 
 auto exprtree::parser::error(const std::string& msg) -> void
