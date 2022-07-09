@@ -20,13 +20,7 @@
 
 template<class> inline constexpr bool always_false_v = false;
 
-using exprtree::TypeId;
-using IdentId = std::string;
-
-/*using VarId = std::string;
-using Scalar = float;
-
-using NullaryFunctor = std::function<Scalar()>;
+/*using NullaryFunctor = std::function<Scalar()>;
 using UnaryFunctor = std::function<Scalar(Scalar)>;
 using BinaryFunctor = std::function<Scalar(Scalar, Scalar)>;
 using AnyFunctor = std::variant<NullaryFunctor, UnaryFunctor, BinaryFunctor>;
@@ -57,7 +51,7 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 
 %token END 0
 %token<TypeId> TYPE
-%token SEP PAREN_OPEN COMMA PAREN_CLOSE SEMICOLON
+%token SEP PAREN_OPEN COMMA PAREN_CLOSE SEMICOLON SCOPE_OPEN SCOPE_CLOSE
 %token<IdentId> IDENTIFIER
 /* %token<FuncId> FUNC_START
 %token FUNC_END
@@ -78,10 +72,10 @@ skip: %empty
 result: statements skip
 
 statements: %empty
-          | statements skip statement skip SEMICOLON
+          | statements skip statement
 
-statement: %empty { assert(parser_state); parser_state->num_empty_statements++; }
-         | func_pro
+statement: SEMICOLON { assert(parser_state); parser_state->num_empty_statements++; }
+         | func_pro skip SEMICOLON
 
 func_pro: TYPE SEP IDENTIFIER skip PAREN_OPEN func_args skip PAREN_CLOSE {
   std::vector<std::string> func_args_;
@@ -101,8 +95,8 @@ func_pro: TYPE SEP IDENTIFIER skip PAREN_OPEN func_args skip PAREN_CLOSE {
 }
 
 func_args: %empty { $$ = {}; }
-         | skip func_arg { $$ = {}; $$.emplace_back($2); }
-         | func_args skip COMMA skip func_arg { $$ = $1; $$.emplace_back($5); }
+         | func_arg { $$ = {}; $$.emplace_back($1); }
+         | func_args COMMA skip func_arg { $$ = $1; $$.emplace_back($4); }
 
 func_arg: TYPE SEP IDENTIFIER { $$ = std::make_tuple($1, $3); }
 
@@ -208,6 +202,8 @@ auto exprtree::yylex(LexerState& lex_state) -> parser::symbol_type
       case ',': advance_tick(1); return parser::make_COMMA();
       case ')': advance_tick(1); return parser::make_PAREN_CLOSE();
       case ';': advance_tick(1); return parser::make_SEMICOLON();
+      case '{': advance_tick(1); return parser::make_SCOPE_OPEN();
+      case '}': advance_tick(1); return parser::make_SCOPE_CLOSE();
       default: break;
     }
   }
