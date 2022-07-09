@@ -57,7 +57,7 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 
 %token END 0
 %token<TypeId> TYPE
-%token SEP PAREN_OPEN COMMA PAREN_CLOSE SEMICOLON
+%token PAREN_OPEN COMMA PAREN_CLOSE SEMICOLON
 %token<IdentId> IDENTIFIER
 /* %token<FuncId> FUNC_START
 %token FUNC_END
@@ -80,28 +80,28 @@ statements: %empty
 statement: %empty
          | func_pro
 
-func_pro: TYPE SEP IDENTIFIER PAREN_OPEN func_args PAREN_CLOSE {
+func_pro: TYPE IDENTIFIER PAREN_OPEN func_args PAREN_CLOSE {
   std::vector<std::string> func_args_;
-  for (const auto& func_arg : $5)
+  for (const auto& func_arg : $4)
     func_args_.emplace_back(fmt::format("({},{})",
       std::get<0>(func_arg),
       std::get<1>(func_arg)));
   spdlog::debug("[func_pro] type {} identifier \"{}\" args [{}]",
     $1,
-    $3,
+    $2,
     fmt::join(func_args_, ", "));
 
   assert(parser_state);
-  const auto ret = parser_state->func_protos.emplace($3, std::make_tuple($1, $5));
+  const auto ret = parser_state->func_protos.emplace($2, std::make_tuple($1, $4));
   if (!std::get<1>(ret))
     throw syntax_error("function already defined");
 }
 
 func_args: %empty { $$ = {}; }
          | func_arg { $$ = {}; $$.emplace_back($1); }
-         | func_args COMMA SEP func_arg { $$ = $1; $$.emplace_back($4); }
+         | func_args COMMA func_arg { $$ = $1; $$.emplace_back($3); }
 
-func_arg: TYPE SEP IDENTIFIER { $$ = std::make_tuple($1, $3); }
+func_arg: TYPE IDENTIFIER { $$ = std::make_tuple($1, $2); }
 
 /*result: expr {
   parser_state.result_value = $1;
@@ -209,17 +209,17 @@ auto exprtree::yylex(LexerState& lex_state) -> parser::symbol_type
     }
   }
 
-  { // separator
+  /*{ // separator
     static const std::regex re("^ +");
     std::smatch match;
     if (std::regex_search(current, match, re)) {
       advance_match(match);
       return parser::make_SEP();
     }
-  }
+  }*/
 
   { // type
-    static const std::regex re("^(float|vec2)");
+    static const std::regex re("^[ \n]*(float|vec2)");
     constexpr auto float_h = shash("float");
     constexpr auto vec2_h = shash("vec2");
     std::smatch match;
@@ -235,7 +235,7 @@ auto exprtree::yylex(LexerState& lex_state) -> parser::symbol_type
   }
 
   { // identifier
-    static const std::regex re("^[a-z]+");
+    static const std::regex re("^[ \n]*[a-z]+");
     std::smatch match;
     if (std::regex_search(current, match, re)) {
       advance_match(match);
