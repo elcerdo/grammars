@@ -1,6 +1,6 @@
-
 include(spdlog)
 include(nlohmann_json)
+include(lemon)
 find_package(BISON 3.2)
 
 bison_target(fblist_parser
@@ -18,6 +18,7 @@ bison_target(assembly_parser
 add_library(grammars STATIC)
 target_sources(grammars
   PUBLIC
+  include/exprtree.h
   include/fblist.h
   include/assembly.h
   PRIVATE
@@ -32,6 +33,7 @@ target_include_directories(grammars
 target_link_libraries(grammars
   PUBLIC
   nlohmann_json::nlohmann_json
+  lemon::lemon
   PRIVATE
   spdlog::spdlog
   )
