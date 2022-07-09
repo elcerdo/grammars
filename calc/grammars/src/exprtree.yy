@@ -95,8 +95,8 @@ func_pro: TYPE SEP IDENTIFIER skip PAREN_OPEN func_args skip PAREN_CLOSE {
 }
 
 func_args: %empty { $$ = {}; }
-         | func_arg { $$ = {}; $$.emplace_back($1); }
-         | func_args COMMA skip func_arg { $$ = $1; $$.emplace_back($4); }
+         | func_args skip func_arg { $$ = $1; $$.emplace_back($3); }
+         | func_args skip COMMA skip func_arg { $$ = $1; $$.emplace_back($5); }
 
 func_arg: TYPE SEP IDENTIFIER { $$ = std::make_tuple($1, $3); }
 

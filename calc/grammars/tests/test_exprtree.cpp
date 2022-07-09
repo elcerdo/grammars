@@ -51,6 +51,7 @@ TEST_CASE("test exprtree", "[grammars][exprtree]")
   test_exprtree("float hello();", std::make_tuple(1, 0));
   test_exprtree("floathello();", {});
   test_exprtree("float coucou(vec2 aa, float bb);", std::make_tuple(1, 0));
+  test_exprtree("float coucou(vec2 aa , float bb);", std::make_tuple(1, 0));
   test_exprtree("float coucou(vec2 aa, floatbb);", {});
   test_exprtree("float coucou(vec2aa, float bb);", {});
   test_exprtree("floatcoucou(vec2 aa, float bb);", {});
@@ -61,7 +62,7 @@ TEST_CASE("test exprtree", "[grammars][exprtree]")
   test_exprtree(" float coucou(vec2 aa, float bb);", std::make_tuple(1 ,0));
   test_exprtree("float coucou(vec2 aa, float bb); ", std::make_tuple(1, 0));
   test_exprtree(" float coucou(vec2 aa, float bb); ", std::make_tuple(1, 0));
-  test_exprtree(" float coucou ( vec2 aa, float bb ) ; ", std::make_tuple(1, 0));
+  test_exprtree(" float coucou ( vec2 aa , float bb ) ; ", std::make_tuple(1, 0));
   test_exprtree(R"(
 
 float coucou(vec2 aa, float bb);
