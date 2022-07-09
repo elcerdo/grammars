@@ -25,7 +25,7 @@ TEST_CASE("test lemon", "[grammars][lemon]")
   REQUIRE(lemon::countArcs(graph) == 1);
 }
 
-void test_exprtree(const std::string& input, const bool ret_)
+void test_exprtree(const std::string& input, const std::optional<std::tuple<size_t>> ret_)
 {
   spdlog::critical("test exprtree");
 
@@ -35,10 +35,19 @@ void test_exprtree(const std::string& input, const bool ret_)
 
   spdlog::info(ret ? "SUCCESS" : "FAILED");
 
-  REQUIRE(static_cast<bool>(ret) == ret_);
+  REQUIRE(static_cast<bool>(ret) == static_cast<bool>(ret_));
+
+  if (ret) {
+    REQUIRE(ret_);
+    const auto& [num_func_protos] = *ret_;
+    REQUIRE(ret->func_protos.size() == num_func_protos);
+  }
 }
 
 TEST_CASE("test exprtree", "[grammars][exprtree]")
 {
-  test_exprtree("float coucou(float aa, float bb)", true);
+  test_exprtree("", 0);
+  test_exprtree("float hello()", 1);
+  test_exprtree("float coucou(vec2 aa, float bb)", 1);
+  test_exprtree("float coucou(vec2 aa, flot bb)", {});
 }

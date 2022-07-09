@@ -57,14 +57,14 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 
 %token END 0
 %token<TypeId> TYPE
-%token SEP PAREN_OPEN
+%token SEP PAREN_OPEN COMMA
 %token<IdentId> IDENTIFIER
 /* %token<FuncId> FUNC_START
 %token FUNC_END
 %token<VarId> VAR_LOOKUP*/
 
-%nterm<std::tuple<TypeId,IdentId>> func_arg
-%nterm<std::vector<std::tuple<TypeId,IdentId>>> func_args
+%nterm<FuncArg> func_arg
+%nterm<FuncArgs> func_args
 /*%nterm<Scalar> expr func_call var_lookup
 %nterm<std::vector<Scalar>> func_args */
 
@@ -72,7 +72,8 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 
 %% /* Grammar rules and actions follow */
 
-result: func_pro END
+result: %empty
+      | func_pro END
 
 func_pro: TYPE SEP IDENTIFIER PAREN_OPEN func_args {
   std::vector<std::string> func_args_;
@@ -80,14 +81,20 @@ func_pro: TYPE SEP IDENTIFIER PAREN_OPEN func_args {
     func_args_.emplace_back(fmt::format("({},{})",
       std::get<0>(func_arg),
       std::get<1>(func_arg)));
-  spdlog::info("[func_pro] type {} identifier \"{}\" args [{}]",
+  spdlog::debug("[func_pro] type {} identifier \"{}\" args [{}]",
     $1,
     $3,
     fmt::join(func_args_, ", "));
+
+  assert(parser_state);
+  const auto ret = parser_state->func_protos.emplace($3, std::make_tuple($1, $5));
+  if (!std::get<1>(ret))
+    throw syntax_error("function already defined");
 }
 
 func_args: %empty { $$ = {}; }
-         | func_args func_arg { $$ = $1; $$.emplace_back($2); }
+         | func_arg { $$ = {}; $$.emplace_back($1); }
+         | func_args COMMA SEP func_arg { $$ = $1; $$.emplace_back($4); }
 
 func_arg: TYPE SEP IDENTIFIER { $$ = std::make_tuple($1, $3); }
 
@@ -190,6 +197,7 @@ auto exprtree::yylex(LexerState& lex_state) -> parser::symbol_type
     const auto letter = current[0];
     switch (letter) {
       case '(': advance_tick(1); return parser::make_PAREN_OPEN();
+      case ',': advance_tick(1); return parser::make_COMMA();
       default: break;
     }
   }
@@ -243,6 +251,8 @@ auto exprtree::run_parser(const std::string& source) -> std::unique_ptr<Payload>
   };
 
   auto parser_state = std::make_unique<Payload>();
+  assert(parser_state);
+
   /*parser_state.var_id_to_scalars["xx"] = xx_value;
   parser_state.func_id_to_functors[FuncId::Zero] = []() -> Scalar { return 0; };
   parser_state.func_id_to_functors[FuncId::One] = []() -> Scalar { return 1; };
@@ -258,7 +268,20 @@ auto exprtree::run_parser(const std::string& source) -> std::unique_ptr<Payload>
 #endif
 
   const auto parsing_err = parser();
-  spdlog::debug("[run_parser] parsing_err {}", parsing_err);
+  spdlog::debug("[run_parser] parsing_err {} num_func_protos {}",
+    parsing_err,
+    parser_state->func_protos.size());
+  for (const auto& [ident_id, data] : parser_state->func_protos) {
+    const auto& [ret_type_id, func_args] = data;
+    std::vector<std::string> foo;
+    for (const auto& func_arg : func_args)
+      foo.emplace_back(fmt::format("{} {}", std::get<0>(func_arg), std::get<1>(func_arg)));
+    spdlog::debug("[run_parser] ** {} {}({});",
+      ret_type_id,
+      ident_id,
+      fmt::join(foo, ", "));
+  }
+
   if (parsing_err) return {};
 
   return parser_state;
