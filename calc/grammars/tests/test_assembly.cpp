@@ -1,21 +1,10 @@
+#include <catch2/catch.hpp>
+
 #include <assembly.h>
-#include <fblist.h>
 
 #include <spdlog/spdlog.h>
 
-void test_fblist(const size_t kk_max)
-{
-  spdlog::critical("test fblist");
-
-  for (size_t kk = 0; kk < kk_max; kk++) {
-    spdlog::info("{:03d} =============", kk);
-    const auto ret = fblist::run_parser(kk);
-    if (ret) spdlog::info("OK GOT {}", *ret);
-    else spdlog::warn("FAILED");
-  }
-}
-
-bool test_assembly(
+void test_assembly(
   const nlohmann::json& jj,
   const float xx_value,
   const std::optional<float> ret_)
@@ -31,22 +20,18 @@ bool test_assembly(
   if (ret) spdlog::info("yy_value {}", *ret);
   else spdlog::info("FAILED");
 
-  return ret == ret_;
+  REQUIRE(ret == ret_);
 }
 
-int main(int argc, char* argv[])
+TEST_CASE("test assembly", "[grammars][assembly]")
 {
-  spdlog::set_level(spdlog::level::debug);
-
-  test_fblist(5);
-
   using assembly::FuncId;
 
-  if (!test_assembly(nlohmann::json{
+  test_assembly(nlohmann::json{
     12,
-  }, 0, {})) return 1;
+  }, 0, {});
 
-  if (!test_assembly(nlohmann::json{
+  test_assembly(nlohmann::json{
     {
       {"opcode", "foo"},
       {"xx", 42},
@@ -56,14 +41,14 @@ int main(int argc, char* argv[])
       {"xx", -5},
       {"yy", 1},
     },
-  }, 0, {})) return 1;
+  }, 0, {});
 
-  if (!test_assembly(nlohmann::json{
+  test_assembly(nlohmann::json{
     {
       {"opcode", "var_lookup"},
       {"var_id", "tmp000"},
     },
-  }, 2, {})) return 1;
+  }, 2, {});
 
   { // simple lookup program
     const auto opcodes = nlohmann::json{
@@ -72,8 +57,8 @@ int main(int argc, char* argv[])
         {"var_id", "xx"},
       },
     };
-    if (!test_assembly(opcodes, 3, 3)) return 1;
-    if (!test_assembly(opcodes, 5, 5)) return 1;
+    test_assembly(opcodes, 3, 3);
+    test_assembly(opcodes, 5, 5);
   }
 
   { // call to undefined 0-arg func program
@@ -86,7 +71,7 @@ int main(int argc, char* argv[])
         {"opcode", "func_end"},
       },
     };
-    if (!test_assembly(opcodes, 3, {})) return 1;
+    test_assembly(opcodes, 3, {});
   }
 
   { // simple 0-arg func program that returns zero
@@ -99,8 +84,8 @@ int main(int argc, char* argv[])
         {"opcode", "func_end"},
       },
     };
-    if (!test_assembly(opcodes, 3, 0)) return 1;
-    if (!test_assembly(opcodes, 5, 0)) return 1;
+    test_assembly(opcodes, 3, 0);
+    test_assembly(opcodes, 5, 0);
   }
 
   { // simple 0-arg func program that returns one
@@ -113,8 +98,8 @@ int main(int argc, char* argv[])
         {"opcode", "func_end"},
       },
     };
-    if (!test_assembly(opcodes, 3, 1)) return 1;
-    if (!test_assembly(opcodes, 5, 1)) return 1;
+    test_assembly(opcodes, 3, 1);
+    test_assembly(opcodes, 5, 1);
   }
 
   { // simple 1-arg func program that double its argument
@@ -131,9 +116,9 @@ int main(int argc, char* argv[])
         {"opcode", "func_end"},
       },
     };
-    if (!test_assembly(opcodes, 3, 6)) return 1;
-    if (!test_assembly(opcodes, 5, 10)) return 1;
-    if (!test_assembly(opcodes, -1, -2)) return 1;
+    test_assembly(opcodes, 3, 6);
+    test_assembly(opcodes, 5, 10);
+    test_assembly(opcodes, -1, -2);
   }
 
   { // nested 1-arg func program that returns (xx - 1) * 2
@@ -157,9 +142,9 @@ int main(int argc, char* argv[])
         {"opcode", "func_end"},
       },
     };
-    if (!test_assembly(opcodes, 3, 4)) return 1;
-    if (!test_assembly(opcodes, 5, 8)) return 1;
-    if (!test_assembly(opcodes, -1, -4)) return 1;
+    test_assembly(opcodes, 3, 4);
+    test_assembly(opcodes, 5, 8);
+    test_assembly(opcodes, -1, -4);
   }
 
   { // binary func program that returns xx + 1
@@ -183,10 +168,9 @@ int main(int argc, char* argv[])
         {"opcode", "func_end"},
       },
     };
-    if (!test_assembly(opcodes, 3, 4)) return 1;
-    if (!test_assembly(opcodes, 5, 6)) return 1;
-    if (!test_assembly(opcodes, -1, 0)) return 1;
+    test_assembly(opcodes, 3, 4);
+    test_assembly(opcodes, 5, 6);
+    test_assembly(opcodes, -1, 0);
   }
 
-  return 0;
 }
