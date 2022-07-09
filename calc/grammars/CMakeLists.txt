@@ -15,6 +15,12 @@ bison_target(assembly_parser
   DEFINES_FILE "${CMAKE_CURRENT_BINARY_DIR}/assembly_parser.tab.h"
   )
 
+bison_target(exprtree_parser
+  src/exprtree.yy
+  "${CMAKE_CURRENT_BINARY_DIR}/exprtree_parser.tab.cpp"
+  DEFINES_FILE "${CMAKE_CURRENT_BINARY_DIR}/exprtree_parser.tab.h"
+  )
+
 add_library(grammars STATIC)
 target_sources(grammars
   PUBLIC
@@ -24,6 +30,7 @@ target_sources(grammars
   PRIVATE
   ${BISON_fblist_parser_OUTPUTS}
   ${BISON_assembly_parser_OUTPUTS}
+  ${BISON_exprtree_parser_OUTPUTS}
   )
 target_include_directories(grammars
   PUBLIC

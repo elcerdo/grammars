@@ -1,11 +1,18 @@
 #pragma once
 
 #include <string>
+#include <optional>
 
 #include <lemon/list_graph.h>
 
-namespace assembly {
+namespace exprtree {
 
-auto run_parser(const std::string& source) -> std::optional<float>;
+struct Payload {
+  using Graph = lemon::ListDigraph;
+
+  Graph graph;
+};
+
+auto run_parser(const std::string& source) -> std::optional<Payload>;
 
 }

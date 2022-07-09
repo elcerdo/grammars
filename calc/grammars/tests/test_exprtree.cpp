@@ -4,7 +4,7 @@
 
 #include <spdlog/spdlog.h>
 
-TEST_CASE("test lemon", "[lemon]")
+TEST_CASE("test lemon", "[grammars][lemon]")
 {
   using Graph = lemon::ListDigraph;
 
@@ -23,4 +23,13 @@ TEST_CASE("test lemon", "[lemon]")
 
   REQUIRE(lemon::countNodes(graph) == 2);
   REQUIRE(lemon::countArcs(graph) == 1);
+}
+
+TEST_CASE("test exprtree", "[grammars][exprtree]")
+{
+  spdlog::critical("test exprtree");
+
+  const auto ret = exprtree::run_parser("float coucou(float aa, float bb)");
+  REQUIRE(ret);
+
 }
