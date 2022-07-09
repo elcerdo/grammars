@@ -10,7 +10,7 @@
 #include <exprtree.h>
 
 #include <spdlog/spdlog.h>
-/* #include <spdlog/fmt/bundled/ranges.h> */
+// #include <spdlog/fmt/bundled/ranges.h>
 
 #include <regex>
 /*#include <vector>
@@ -32,7 +32,11 @@ using AnyFunctor = std::variant<NullaryFunctor, UnaryFunctor, BinaryFunctor>;
 using VarIdToScalars = std::unordered_map<VarId, Scalar>;
 using FuncIdToAnyFunctors = std::unordered_map<FuncId, AnyFunctor>; */
 
-using LexerState = std::string;
+
+struct LexerState {
+  std::string current; // FIXME may get away with only using iterators
+};
+
 using ParserState = std::unique_ptr<exprtree::Payload>;
 
 %}
@@ -50,6 +54,7 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 }
 
 %token END 0
+%token<TypeId> TYPE
 /* %token<FuncId> FUNC_START
 %token FUNC_END
 %token<VarId> VAR_LOOKUP
@@ -62,6 +67,9 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 %% /* Grammar rules and actions follow */
 
 result: %empty
+      | func_pro
+
+func_pro: TYPE { spdlog::info("[type] {}", $1); }
 
 /*result: expr {
   parser_state.result_value = $1;
@@ -143,7 +151,34 @@ constexpr size_t shash(char const * ii)
 
 auto exprtree::yylex(LexerState& lex_state) -> parser::symbol_type
 {
-  static const std::regex re_type("(float|vec2)");
+  const auto current = lex_state.current;
+
+  { // types
+    static const std::regex re("^(float|vec2)");
+    constexpr auto float_h = shash("float");
+    constexpr auto vec2_h = shash("vec2");
+
+    std::smatch match;
+    if (std::regex_search(current, match, re)) {
+      const auto type_h = shash(match[1].str().c_str());
+
+      spdlog::warn("TYPE {} float {} vec2 {} {}",
+        match[0].str(),
+        type_h == float_h,
+        type_h == vec2_h,
+        match.size());
+
+      lex_state.current = match.suffix().str(); // advance head
+
+      spdlog::info("current \"{}\"", lex_state.current);
+
+      switch(type_h) {
+        case float_h: return parser::make_TYPE(TypeId::Float);
+        case vec2_h: return parser::make_TYPE(TypeId::Vec2);
+        default: assert(false);
+      }
+    }
+  }
 
   return parser::make_END();
 /*
