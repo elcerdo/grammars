@@ -2,7 +2,7 @@
 
 #include <string>
 #include <tuple>
-#include <vector>
+#include <list>
 #include <unordered_map>
 
 #include <lemon/list_graph.h>
@@ -19,7 +19,7 @@ enum struct TypeId {
 using IdentId = std::string;
 
 using FuncArg = std::tuple<TypeId,IdentId>;
-using FuncArgs = std::vector<FuncArg>;
+using FuncArgs = std::list<FuncArg>;
 
 using Graph = lemon::ListDigraph;
 using FuncPrototypes = std::unordered_map<IdentId, std::tuple<TypeId, FuncArgs>>;

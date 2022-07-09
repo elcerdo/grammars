@@ -58,7 +58,7 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 %token<VarId> VAR_LOOKUP*/
 
 %nterm<FuncArg> func_arg
-%nterm<FuncArgs> func_args
+%nterm<FuncArgs> func_args func_extra_args
 /*%nterm<Scalar> expr func_call var_lookup
 %nterm<std::vector<Scalar>> func_args */
 
@@ -77,9 +77,9 @@ statements: %empty
 statement: SEMICOLON { assert(parser_state); parser_state->num_empty_statements++; }
          | func_pro skip SEMICOLON
 
-func_pro: TYPE SEP IDENTIFIER skip PAREN_OPEN func_args skip PAREN_CLOSE {
+func_pro: TYPE SEP IDENTIFIER skip PAREN_OPEN skip func_args PAREN_CLOSE {
   std::vector<std::string> func_args_;
-  for (const auto& func_arg : $6)
+  for (const auto& func_arg : $7)
     func_args_.emplace_back(fmt::format("({},{})",
       std::get<0>(func_arg),
       std::get<1>(func_arg)));
@@ -89,14 +89,16 @@ func_pro: TYPE SEP IDENTIFIER skip PAREN_OPEN func_args skip PAREN_CLOSE {
     fmt::join(func_args_, ", "));
 
   assert(parser_state);
-  const auto ret = parser_state->func_protos.emplace($3, std::make_tuple($1, $6));
+  const auto ret = parser_state->func_protos.emplace($3, std::make_tuple($1, $7));
   if (!std::get<1>(ret))
     throw syntax_error("function already defined");
 }
 
 func_args: %empty { $$ = {}; }
-         | func_args skip func_arg { $$ = $1; $$.emplace_back($3); }
-         | func_args skip COMMA skip func_arg { $$ = $1; $$.emplace_back($5); }
+         | func_arg func_extra_args skip { $$ = $2; $$.emplace_front($1); }
+
+func_extra_args: %empty { $$ = {}; }
+               | func_extra_args skip COMMA skip func_arg { $$ = $1; $$.emplace_back($5); }
 
 func_arg: TYPE SEP IDENTIFIER { $$ = std::make_tuple($1, $3); }
 
