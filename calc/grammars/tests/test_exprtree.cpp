@@ -25,7 +25,7 @@ TEST_CASE("test lemon", "[grammars][lemon]")
   REQUIRE(lemon::countArcs(graph) == 1);
 }
 
-void test_exprtree(const std::string& input, const std::optional<std::tuple<size_t>> ret_)
+void test_exprtree(const std::string& input, const std::optional<std::tuple<size_t, size_t>> ret_)
 {
   spdlog::critical("test exprtree");
 
@@ -39,27 +39,42 @@ void test_exprtree(const std::string& input, const std::optional<std::tuple<size
 
   if (ret) {
     REQUIRE(ret_);
-    const auto& [num_func_protos] = *ret_;
+    const auto& [num_func_protos, num_empty_statements] = *ret_;
     REQUIRE(ret->func_protos.size() == num_func_protos);
+    REQUIRE(ret->num_empty_statements == num_empty_statements);
   }
 }
 
 TEST_CASE("test exprtree", "[grammars][exprtree]")
 {
-  test_exprtree("", 0);
-  test_exprtree("float hello();", 1);
+  test_exprtree("", std::make_tuple(0, 0));
+  test_exprtree("float hello();", std::make_tuple(1, 0));
   test_exprtree("floathello();", {});
-  test_exprtree("float coucou(vec2 aa, float bb);", 1);
-  test_exprtree("float coucou(vec2 aa,float bb);", 1);
+  test_exprtree("float coucou(vec2 aa, float bb);", std::make_tuple(1, 0));
+  test_exprtree("float coucou(vec2 aa, floatbb);", {});
+  test_exprtree("float coucou(vec2aa, float bb);", {});
+  test_exprtree("floatcoucou(vec2 aa, float bb);", {});
+  test_exprtree("float coucou(vec2 aa,float bb);", std::make_tuple(1, 0));
+  test_exprtree("float coucou (vec2 aa, float bb);", std::make_tuple(1, 0));
+  test_exprtree("float coucou(vec2 aa, float bb) ;", std::make_tuple(1 ,0));
   test_exprtree("float coucou(vec2 aa, flot bb);", {});
-  test_exprtree(" float coucou(vec2 aa, float bb);", 1);
-  test_exprtree("float coucou(vec2 aa, float bb); ", 1);
-  test_exprtree(" float coucou(vec2 aa, float bb); ", 1);
+  test_exprtree(" float coucou(vec2 aa, float bb);", std::make_tuple(1 ,0));
+  test_exprtree("float coucou(vec2 aa, float bb); ", std::make_tuple(1, 0));
+  test_exprtree(" float coucou(vec2 aa, float bb); ", std::make_tuple(1, 0));
+  test_exprtree(" float coucou ( vec2 aa, float bb ) ; ", std::make_tuple(1, 0));
   test_exprtree(R"(
 
 float coucou(vec2 aa, float bb);
 float hello(float bb);
 float world(vec2 bb);
 
-)", 3);
+)", std::make_tuple(3, 0));
+  test_exprtree(R"(
+;
+float coucou(vec2 aa, float bb);
+float hello(float bb);
+   ;;
+float world(vec2 bb);
+;
+)", std::make_tuple(3, 4));
 }

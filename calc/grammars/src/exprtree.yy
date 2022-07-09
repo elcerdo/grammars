@@ -78,14 +78,14 @@ skip: %empty
 result: statements skip
 
 statements: %empty
-          | statements skip statement SEMICOLON
+          | statements skip statement skip SEMICOLON
 
-statement: %empty
+statement: %empty { assert(parser_state); parser_state->num_empty_statements++; }
          | func_pro
 
-func_pro: TYPE SEP IDENTIFIER PAREN_OPEN func_args PAREN_CLOSE {
+func_pro: TYPE SEP IDENTIFIER skip PAREN_OPEN func_args skip PAREN_CLOSE {
   std::vector<std::string> func_args_;
-  for (const auto& func_arg : $5)
+  for (const auto& func_arg : $6)
     func_args_.emplace_back(fmt::format("({},{})",
       std::get<0>(func_arg),
       std::get<1>(func_arg)));
@@ -95,14 +95,14 @@ func_pro: TYPE SEP IDENTIFIER PAREN_OPEN func_args PAREN_CLOSE {
     fmt::join(func_args_, ", "));
 
   assert(parser_state);
-  const auto ret = parser_state->func_protos.emplace($3, std::make_tuple($1, $5));
+  const auto ret = parser_state->func_protos.emplace($3, std::make_tuple($1, $6));
   if (!std::get<1>(ret))
     throw syntax_error("function already defined");
 }
 
 func_args: %empty { $$ = {}; }
-         | func_arg { $$ = {}; $$.emplace_back($1); }
-         | func_args COMMA skip func_arg { $$ = $1; $$.emplace_back($4); }
+         | skip func_arg { $$ = {}; $$.emplace_back($2); }
+         | func_args skip COMMA skip func_arg { $$ = $1; $$.emplace_back($5); }
 
 func_arg: TYPE SEP IDENTIFIER { $$ = std::make_tuple($1, $3); }
 
@@ -278,8 +278,9 @@ auto exprtree::run_parser(const std::string& source) -> std::unique_ptr<Payload>
 #endif
 
   const auto parsing_err = parser();
-  spdlog::debug("[run_parser] parsing_err {} num_func_protos {}",
+  spdlog::debug("[run_parser] parsing_err {} num_empty_statements {} num_func_protos {}",
     parsing_err,
+    parser_state->num_empty_statements,
     parser_state->func_protos.size());
   for (const auto& [ident_id, data] : parser_state->func_protos) {
     const auto& [ret_type_id, func_args] = data;
