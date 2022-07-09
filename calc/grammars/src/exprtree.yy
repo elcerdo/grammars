@@ -57,7 +57,7 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 
 %token END 0
 %token<TypeId> TYPE
-%token SEP PAREN_OPEN COMMA
+%token SEP PAREN_OPEN COMMA PAREN_CLOSE SEMICOLON
 %token<IdentId> IDENTIFIER
 /* %token<FuncId> FUNC_START
 %token FUNC_END
@@ -72,10 +72,14 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 
 %% /* Grammar rules and actions follow */
 
-result: %empty
-      | func_pro END
+result: statements
 
-func_pro: TYPE SEP IDENTIFIER PAREN_OPEN func_args {
+statements: %empty
+          | statements statement SEMICOLON
+
+statement: func_pro
+
+func_pro: TYPE SEP IDENTIFIER PAREN_OPEN func_args PAREN_CLOSE {
   std::vector<std::string> func_args_;
   for (const auto& func_arg : $5)
     func_args_.emplace_back(fmt::format("({},{})",
@@ -181,13 +185,13 @@ auto exprtree::yylex(LexerState& lex_state) -> parser::symbol_type
   const auto current = lex_state.current;
   const auto advance_match = [&lex_state, &current](const std::smatch& match) -> void {
     lex_state.current = match.suffix().str();
-    spdlog::warn("[advance] \"{}\" -> \"{}\"",
+    spdlog::trace("[advance] \"{}\" -> \"{}\"",
       current,
       lex_state.current);
   };
   const auto advance_tick = [&lex_state, &current](const size_t nn) -> void {
     lex_state.current.erase(0, nn);
-    spdlog::warn("[advance] \"{}\" -> \"{}\"",
+    spdlog::trace("[advance] \"{}\" -> \"{}\"",
       current,
       lex_state.current);
     assert(nn > 0);
@@ -198,6 +202,8 @@ auto exprtree::yylex(LexerState& lex_state) -> parser::symbol_type
     switch (letter) {
       case '(': advance_tick(1); return parser::make_PAREN_OPEN();
       case ',': advance_tick(1); return parser::make_COMMA();
+      case ')': advance_tick(1); return parser::make_PAREN_CLOSE();
+      case ';': advance_tick(1); return parser::make_SEMICOLON();
       default: break;
     }
   }
