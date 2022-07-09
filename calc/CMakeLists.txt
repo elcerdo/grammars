@@ -4,7 +4,9 @@ set(CMAKE_CXX_STANDARD 17)
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
-include(spdlog)
+include(catch2)
+
+enable_testing()
 
 add_subdirectory(grammars)
 

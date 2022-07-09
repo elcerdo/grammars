@@ -1,3 +1,5 @@
+
+include(spdlog)
 include(nlohmann_json)
 find_package(BISON 3.2)
 
@@ -37,3 +39,5 @@ target_compile_definitions(grammars
   PRIVATE
   #YYDEBUG
   )
+
+add_subdirectory(tests)
