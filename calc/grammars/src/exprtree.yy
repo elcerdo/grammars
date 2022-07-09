@@ -12,15 +12,16 @@
 #include <spdlog/spdlog.h>
 /* #include <spdlog/fmt/bundled/ranges.h> */
 
-/* #include <vector>
+#include <regex>
+/*#include <vector>
 #include <functional>
 #include <unordered_map>
-#include <variant>
+#include <variant>*/
 
 template<class> inline constexpr bool always_false_v = false;
 
-using assembly::FuncId;
-using VarId = std::string;
+using exprtree::TypeId;
+/*using VarId = std::string;
 using Scalar = float;
 
 using NullaryFunctor = std::function<Scalar()>;
@@ -31,17 +32,8 @@ using AnyFunctor = std::variant<NullaryFunctor, UnaryFunctor, BinaryFunctor>;
 using VarIdToScalars = std::unordered_map<VarId, Scalar>;
 using FuncIdToAnyFunctors = std::unordered_map<FuncId, AnyFunctor>; */
 
-struct LexerState {
-  using Container = std::string;
-  Container::const_iterator input_current;
-  const Container::const_iterator input_end;
-};
-
-struct ParserState {
-  /* float result_value;
-  VarIdToScalars var_id_to_scalars;
-  FuncIdToAnyFunctors func_id_to_functors; */
-};
+using LexerState = std::string;
+using ParserState = std::unique_ptr<exprtree::Payload>;
 
 %}
 
@@ -135,6 +127,12 @@ func_args: %empty { $$ = {}; }
 
 %% /* Other definitions */
 
+exprtree::Payload::Payload()
+  : graph()
+  , foobar(graph)
+{
+}
+
 constexpr size_t shash(char const * ii)
 {
   size_t seed = 0xa578ffb2;
@@ -145,6 +143,8 @@ constexpr size_t shash(char const * ii)
 
 auto exprtree::yylex(LexerState& lex_state) -> parser::symbol_type
 {
+  static const std::regex re_type("(float|vec2)");
+
   return parser::make_END();
 /*
   if (lex_state.input_current >= lex_state.input_end)
@@ -175,42 +175,30 @@ auto exprtree::parser::error(const std::string& msg) -> void
   spdlog::debug("[parser_error] {}", msg);
 }
 
-auto exprtree::run_parser(const std::string& source) -> std::optional<Payload>
+auto exprtree::run_parser(const std::string& source) -> std::unique_ptr<Payload>
 {
-  return {};
-
-/*  if (!jj.is_array())
-    return {};
-
-  const auto kk = jj.get<LexerState::Container>();
-  spdlog::debug("[run_parser] num_opcodes {}", kk.size());
   LexerState lex_state {
-    std::cbegin(kk),
-    std::cend(kk),
+    source,
   };
 
-  ParserState parser_state;
-  parser_state.var_id_to_scalars["xx"] = xx_value;
+  auto parser_state = std::make_unique<Payload>();
+  /*parser_state.var_id_to_scalars["xx"] = xx_value;
   parser_state.func_id_to_functors[FuncId::Zero] = []() -> Scalar { return 0; };
   parser_state.func_id_to_functors[FuncId::One] = []() -> Scalar { return 1; };
   parser_state.func_id_to_functors[FuncId::TimesTwo] = [](const Scalar xx) -> Scalar { return 2 * xx; };
   parser_state.func_id_to_functors[FuncId::MinusOne] = [](const Scalar xx) -> Scalar { return xx - 1; };
-  parser_state.func_id_to_functors[FuncId::Add] = [](const Scalar xx, const Scalar yy) -> Scalar { return xx + yy; };
+  parser_state.func_id_to_functors[FuncId::Add] = [](const Scalar xx, const Scalar yy) -> Scalar { return xx + yy; };*/
 
-  assembly::parser parser(lex_state, parser_state);
+  exprtree::parser parser(lex_state, parser_state);
 
 #if YYDEBUG
   parser.set_debug_stream(std::cout);
   parser.set_debug_level(1);
 #endif
 
-  try {
-    const auto parsing_err = parser();
-    spdlog::debug("[run_parser] parsing_err {}", parsing_err);
-    if (parsing_err) return {};
-    return parser_state.result_value;
-  } catch (nlohmann::json::exception& exc) {
-    spdlog::debug("[json_error] {}", exc.what());
-    return {};
-  }*/
+  const auto parsing_err = parser();
+  spdlog::debug("[run_parser] parsing_err {}", parsing_err);
+  if (parsing_err) return {};
+
+  return parser_state;
 }

@@ -1,18 +1,25 @@
 #pragma once
 
 #include <string>
-#include <optional>
 
 #include <lemon/list_graph.h>
 
 namespace exprtree {
 
-struct Payload {
-  using Graph = lemon::ListDigraph;
+using Graph = lemon::ListDigraph;
 
-  Graph graph;
+enum struct TypeId {
+  Float,
+  Vec2,
+  Undefined,
 };
 
-auto run_parser(const std::string& source) -> std::optional<Payload>;
+struct Payload {
+  Payload();
+  Graph graph;
+  Graph::NodeMap<int> foobar;
+};
+
+auto run_parser(const std::string& source) -> std::unique_ptr<Payload>;
 
 }
