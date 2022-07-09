@@ -74,6 +74,12 @@ float world(vec2 bb);
 
 )", std::make_tuple(3, 0));
   test_exprtree(R"(
+
+float coucou(vec2 aa, float bb);
+vec2 coucou(float aa, float bb);
+
+)", {});
+  test_exprtree(R"(
 ;
 float coucou(vec2 aa, float bb);
 float hello(float bb);
@@ -81,4 +87,13 @@ float hello(float bb);
 float world(vec2 bb);
 ;
 )", std::make_tuple(3, 4));
+
+  test_exprtree(R"(
+
+float coucou(vec2 aa, float bb) {
+
+
+}
+
+)", std::make_tuple(1, 0));
 }

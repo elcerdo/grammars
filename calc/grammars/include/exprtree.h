@@ -18,7 +18,7 @@ enum struct TypeId {
 
 using IdentId = std::string;
 
-using FuncArg = std::tuple<TypeId,IdentId>;
+using FuncArg = std::tuple<TypeId, IdentId>;
 using FuncArgs = std::list<FuncArg>;
 
 using Graph = lemon::ListDigraph;

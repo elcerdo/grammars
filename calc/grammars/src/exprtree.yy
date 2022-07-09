@@ -59,6 +59,7 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 
 %nterm<FuncArg> func_arg
 %nterm<FuncArgs> func_args func_extra_args
+%nterm<IdentId> func_proto
 /*%nterm<Scalar> expr func_call var_lookup
 %nterm<std::vector<Scalar>> func_args */
 
@@ -75,15 +76,21 @@ statements: %empty
           | statements skip statement
 
 statement: SEMICOLON { assert(parser_state); parser_state->num_empty_statements++; }
-         | func_pro skip SEMICOLON
+         | func_proto skip SEMICOLON
+         | func_impl
 
-func_pro: TYPE SEP IDENTIFIER skip PAREN_OPEN skip func_args PAREN_CLOSE {
+func_impl: func_proto skip SCOPE_OPEN skip SCOPE_CLOSE {
+  spdlog::debug("[func_impl] identifier \"{}\" !!!",
+    $1);
+}
+
+func_proto: TYPE SEP IDENTIFIER skip PAREN_OPEN skip func_args PAREN_CLOSE {
   std::vector<std::string> func_args_;
   for (const auto& func_arg : $7)
     func_args_.emplace_back(fmt::format("({},{})",
       std::get<0>(func_arg),
       std::get<1>(func_arg)));
-  spdlog::debug("[func_pro] type {} identifier \"{}\" args [{}]",
+  spdlog::debug("[func_proto] type {} identifier \"{}\" args [{}]",
     $1,
     $3,
     fmt::join(func_args_, ", "));
@@ -92,6 +99,8 @@ func_pro: TYPE SEP IDENTIFIER skip PAREN_OPEN skip func_args PAREN_CLOSE {
   const auto ret = parser_state->func_protos.emplace($3, std::make_tuple($1, $7));
   if (!std::get<1>(ret))
     throw syntax_error("function already defined");
+
+  $$ = $3;
 }
 
 func_args: %empty { $$ = {}; }
