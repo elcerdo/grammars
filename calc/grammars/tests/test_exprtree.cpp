@@ -29,7 +29,7 @@ void test_exprtree(const std::string& input, const std::optional<std::tuple<size
 {
   spdlog::critical("test exprtree");
 
-  spdlog::info("input\n{}", input);
+  spdlog::info("input \"{}\"", input);
 
   const auto ret = exprtree::run_parser(input);
 
@@ -50,11 +50,14 @@ TEST_CASE("test exprtree", "[grammars][exprtree]")
   test_exprtree("float hello();", 1);
   test_exprtree("float coucou(vec2 aa, float bb);", 1);
   test_exprtree("float coucou(vec2 aa, flot bb);", {});
-  test_exprtree(R"(
-
-float coucou(vec2 aa, float bb);
-float hello(float bb);
-float world(vec2 bb);
-
-)", 3);
+  test_exprtree(" float coucou(vec2 aa, float bb);", 1);
+  // test_exprtree("float coucou(vec2 aa, float bb); ", 1);
+  // test_exprtree(" float coucou(vec2 aa, float bb); ", 1);
+//   test_exprtree(R"(
+//
+// float coucou(vec2 aa, float bb);
+// float hello(float bb);
+// float world(vec2 bb);
+//
+// )", 3);
 }

@@ -77,7 +77,8 @@ result: statements
 statements: %empty
           | statements statement SEMICOLON
 
-statement: func_pro
+statement: %empty
+         | func_pro
 
 func_pro: TYPE SEP IDENTIFIER PAREN_OPEN func_args PAREN_CLOSE {
   std::vector<std::string> func_args_;
