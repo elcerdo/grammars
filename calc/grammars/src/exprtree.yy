@@ -309,14 +309,14 @@ auto exprtree::run_parser(const std::string& source) -> std::unique_ptr<Payload>
   parser_state.func_id_to_functors[FuncId::MinusOne] = [](const Scalar xx) -> Scalar { return xx - 1; };
   parser_state.func_id_to_functors[FuncId::Add] = [](const Scalar xx, const Scalar yy) -> Scalar { return xx + yy; };*/
 
-  exprtree::parser parser(lex_state, parser_state);
+  parser pp(lex_state, parser_state);
 
 #if YYDEBUG
-  parser.set_debug_stream(std::cout);
-  parser.set_debug_level(1);
+  pp.set_debug_stream(std::cout);
+  pp.set_debug_level(1);
 #endif
 
-  const auto parsing_err = parser();
+  const auto parsing_err = pp();
 
   spdlog::debug("[run_parser] parsing_err {} num_empty_declarations {} num_func_protos {}",
     parsing_err,
@@ -332,6 +332,21 @@ auto exprtree::run_parser(const std::string& source) -> std::unique_ptr<Payload>
       ret_type_id,
       ident_id,
       fmt::join(foo, ", "));
+  }
+
+  { // dump graph
+    using NodeIt = Graph::NodeIt;
+    using namespace lemon;
+
+    assert(parser_state);
+    const auto& graph = parser_state->graph;
+
+    spdlog::debug("[run_parser] num_nodes {} num_arcs {}",
+      countNodes(graph),
+      countArcs(graph));
+
+    for (NodeIt ni(graph); ni!=INVALID; ++ni)
+      spdlog::debug("[run_parser] NN {}", graph.id(ni));
   }
 
   if (parsing_err) return {};
