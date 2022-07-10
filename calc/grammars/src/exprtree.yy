@@ -67,37 +67,34 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 
 %% /* Grammar rules and actions follow */
 
-skip: %empty
-    | SEP
-
-result: declarations skip
+result: declarations
 
 declarations: %empty
-            | declarations skip declaration
+            | declarations declaration
 
 declaration: SEMICOLON { assert(parser_state); parser_state->num_empty_declarations++; }
-           | func_proto skip SEMICOLON
+           | func_proto SEMICOLON
            | func_impl
 
-func_impl: func_proto skip SCOPE_OPEN statements skip SCOPE_CLOSE {
+func_impl: func_proto SCOPE_OPEN statements SCOPE_CLOSE {
   spdlog::debug("[func_impl] identifier \"{}\" num_statements {} !!!",
     $1,
-    $4);
+    $3);
 }
 
 statements: %empty { $$ = 0; }
-          | statements skip statement { $$ = $1; $$++; }
+          | statements statement { $$ = $1; $$++; }
 
 statement: SEMICOLON
-         | RETURN SEP expr skip SEMICOLON
-         | TYPE SEP IDENTIFIER skip EQUAL skip expr skip SEMICOLON
+         | RETURN SEP expr SEMICOLON
+         | TYPE SEP IDENTIFIER EQUAL SEP expr SEMICOLON
 
 expr: IDENTIFIER { spdlog::debug("[expr] var_lookup \"{}\"", $1); }
-    | expr PLUS skip expr { spdlog::debug("[expr] addition"); }
+    | expr PLUS expr { spdlog::debug("[expr] addition"); }
 
-func_proto: TYPE SEP IDENTIFIER skip PAREN_OPEN skip func_args PAREN_CLOSE {
+func_proto: TYPE SEP IDENTIFIER PAREN_OPEN func_args PAREN_CLOSE {
   std::vector<std::string> func_args_;
-  for (const auto& func_arg : $7)
+  for (const auto& func_arg : $5)
     func_args_.emplace_back(fmt::format("({},{})",
       std::get<0>(func_arg),
       std::get<1>(func_arg)));
@@ -107,7 +104,7 @@ func_proto: TYPE SEP IDENTIFIER skip PAREN_OPEN skip func_args PAREN_CLOSE {
     fmt::join(func_args_, ", "));
 
   assert(parser_state);
-  const auto ret = parser_state->func_protos.emplace($3, std::make_tuple($1, $7));
+  const auto ret = parser_state->func_protos.emplace($3, std::make_tuple($1, $5));
   if (!std::get<1>(ret))
     throw syntax_error("function already defined");
 
@@ -115,10 +112,10 @@ func_proto: TYPE SEP IDENTIFIER skip PAREN_OPEN skip func_args PAREN_CLOSE {
 }
 
 func_args: %empty { $$ = {}; }
-         | func_arg func_extra_args skip { $$ = $2; $$.emplace_front($1); }
+         | func_arg func_extra_args { $$ = $2; $$.emplace_front($1); }
 
 func_extra_args: %empty { $$ = {}; }
-               | func_extra_args skip COMMA skip func_arg { $$ = $1; $$.emplace_back($5); }
+               | func_extra_args COMMA func_arg { $$ = $1; $$.emplace_back($3); }
 
 func_arg: TYPE SEP IDENTIFIER { $$ = std::make_tuple($1, $3); }
 
@@ -202,14 +199,29 @@ constexpr size_t shash(char const * ii)
 
 auto exprtree::yylex(LexerState& lex_state) -> parser::symbol_type
 {
-  const auto current = *lex_state;
-  const auto advance_match = [&lex_state, &current](const std::smatch& match) -> void {
+  assert(lex_state);
+
+  bool skipped_separators = false;
+  { // skip separators
+    static const std::regex re_skip("^ +");
+    const auto current = *lex_state;
+    *lex_state = std::regex_replace(current, re_skip, "");
+    skipped_separators = current.size() != lex_state->size();
+    spdlog::trace("   [skip] \"{}\" -> \"{}\" {}",
+      current,
+      *lex_state,
+      skipped_separators);
+  }
+
+  const auto advance_match = [&lex_state](const std::smatch& match) -> void {
+    const auto current = *lex_state;
     *lex_state = match.suffix().str();
     spdlog::trace("[advance] \"{}\" -> \"{}\"",
       current,
       *lex_state);
   };
-  const auto advance_tick = [&lex_state, &current](const size_t nn) -> void {
+  const auto advance_tick = [&lex_state](const size_t nn) -> void {
+    const auto current = *lex_state;
     lex_state->erase(0, nn);
     spdlog::trace("[advance] \"{}\" -> \"{}\"",
       current,
@@ -217,7 +229,14 @@ auto exprtree::yylex(LexerState& lex_state) -> parser::symbol_type
     assert(nn > 0);
   };
 
-  if (!current.empty()) { // single character
+  const auto current = *lex_state;
+
+  if (current.empty())
+    return parser::make_END();
+
+  { // single character
+    static const std::regex re("^ +");
+
     const auto letter = current[0];
     switch (letter) {
       case '(': advance_tick(1); return parser::make_PAREN_OPEN();
@@ -229,15 +248,6 @@ auto exprtree::yylex(LexerState& lex_state) -> parser::symbol_type
       case '+': advance_tick(1); return parser::make_PLUS();
       case '=': advance_tick(1); return parser::make_EQUAL();
       default: break;
-    }
-  }
-
-  { // separator
-    static const std::regex re("^[ ]+");
-    std::smatch match;
-    if (std::regex_search(current, match, re)) {
-      advance_match(match);
-      return parser::make_SEP();
     }
   }
 
@@ -270,6 +280,9 @@ auto exprtree::yylex(LexerState& lex_state) -> parser::symbol_type
       }
     }
   }
+
+  if (skipped_separators) // separator
+    return parser::make_SEP();
 
   { // identifier
     static const std::regex re("^[a-z]+");
