@@ -39,9 +39,9 @@ void test_exprtree(const std::string& input, const std::optional<std::tuple<size
 
   if (ret) {
     REQUIRE(ret_);
-    const auto& [num_func_protos, num_empty_statements] = *ret_;
+    const auto& [num_func_protos, num_empty_declarations] = *ret_;
     REQUIRE(ret->func_protos.size() == num_func_protos);
-    REQUIRE(ret->num_empty_statements == num_empty_statements);
+    REQUIRE(ret->num_empty_declarations == num_empty_declarations);
   }
 }
 
@@ -91,7 +91,7 @@ float world(vec2 bb);
   test_exprtree(R"(
 
 float coucou(vec2 aa, float bb) {
-
+;
 
 }
 

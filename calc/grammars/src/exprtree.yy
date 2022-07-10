@@ -60,6 +60,7 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 %nterm<FuncArg> func_arg
 %nterm<FuncArgs> func_args func_extra_args
 %nterm<IdentId> func_proto
+%nterm<size_t> statements
 /*%nterm<Scalar> expr func_call var_lookup
 %nterm<std::vector<Scalar>> func_args */
 
@@ -70,19 +71,25 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 skip: %empty
     | SEP
 
-result: statements skip
+result: declarations skip
 
-statements: %empty
-          | statements skip statement
+declarations: %empty
+            | declarations skip declaration
 
-statement: SEMICOLON { assert(parser_state); parser_state->num_empty_statements++; }
-         | func_proto skip SEMICOLON
-         | func_impl
+declaration: SEMICOLON { assert(parser_state); parser_state->num_empty_declarations++; }
+           | func_proto skip SEMICOLON
+           | func_impl
 
-func_impl: func_proto skip SCOPE_OPEN skip SCOPE_CLOSE {
-  spdlog::debug("[func_impl] identifier \"{}\" !!!",
-    $1);
+func_impl: func_proto skip SCOPE_OPEN statements skip SCOPE_CLOSE {
+  spdlog::debug("[func_impl] identifier \"{}\" num_statements {} !!!",
+    $1,
+    $4);
 }
+
+statements: %empty { $$ = 0; }
+          | statements skip statement { $$++; }
+
+statement: SEMICOLON
 
 func_proto: TYPE SEP IDENTIFIER skip PAREN_OPEN skip func_args PAREN_CLOSE {
   std::vector<std::string> func_args_;
@@ -285,9 +292,9 @@ auto exprtree::run_parser(const std::string& source) -> std::unique_ptr<Payload>
 #endif
 
   const auto parsing_err = parser();
-  spdlog::debug("[run_parser] parsing_err {} num_empty_statements {} num_func_protos {}",
+  spdlog::debug("[run_parser] parsing_err {} num_empty_declarations {} num_func_protos {}",
     parsing_err,
-    parser_state->num_empty_statements,
+    parser_state->num_empty_declarations,
     parser_state->func_protos.size());
   for (const auto& [ident_id, data] : parser_state->func_protos) {
     const auto& [ret_type_id, func_args] = data;

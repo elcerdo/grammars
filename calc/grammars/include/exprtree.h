@@ -30,7 +30,7 @@ struct Payload {
   Graph::NodeMap<int> foobar;
 
   FuncPrototypes func_protos = {};
-  size_t num_empty_statements = 0;
+  size_t num_empty_declarations = 0;
 };
 
 auto run_parser(const std::string& source) -> std::unique_ptr<Payload>;
