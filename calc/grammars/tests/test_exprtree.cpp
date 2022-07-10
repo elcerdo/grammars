@@ -91,8 +91,7 @@ float world(vec2 bb);
   test_exprtree(R"(
 
 float coucou(vec2 aa, float bb) {
-;
-
+  return aa;
 }
 
 )", std::make_tuple(1, 0));

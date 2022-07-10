@@ -51,7 +51,7 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 
 %token END 0
 %token<TypeId> TYPE
-%token SEP PAREN_OPEN COMMA PAREN_CLOSE SEMICOLON SCOPE_OPEN SCOPE_CLOSE
+%token SEP PAREN_OPEN COMMA PAREN_CLOSE SEMICOLON SCOPE_OPEN SCOPE_CLOSE RETURN PLUS
 %token<IdentId> IDENTIFIER
 /* %token<FuncId> FUNC_START
 %token FUNC_END
@@ -90,6 +90,10 @@ statements: %empty { $$ = 0; }
           | statements skip statement { $$++; }
 
 statement: SEMICOLON
+         | RETURN SEP expr SEMICOLON
+
+expr: IDENTIFIER { spdlog::debug("[expr] var_lookup \"{}\"", $1); }
+    /* | expr PLUS expr { spdlog::debug("[expr] addition"); } */
 
 func_proto: TYPE SEP IDENTIFIER skip PAREN_OPEN skip func_args PAREN_CLOSE {
   std::vector<std::string> func_args_;
@@ -222,6 +226,7 @@ auto exprtree::yylex(LexerState& lex_state) -> parser::symbol_type
       case ';': advance_tick(1); return parser::make_SEMICOLON();
       case '{': advance_tick(1); return parser::make_SCOPE_OPEN();
       case '}': advance_tick(1); return parser::make_SCOPE_CLOSE();
+      case '+': advance_tick(1); return parser::make_PLUS();
       default: break;
     }
   }
@@ -232,6 +237,20 @@ auto exprtree::yylex(LexerState& lex_state) -> parser::symbol_type
     if (std::regex_search(current, match, re)) {
       advance_match(match);
       return parser::make_SEP();
+    }
+  }
+
+  { // keyword
+    static const std::regex re("^(return)");
+    constexpr auto return_h = shash("return");
+    std::smatch match;
+    if (std::regex_search(current, match, re)) {
+      const auto type_h = shash(match[1].str().c_str());
+      advance_match(match);
+      switch(type_h) {
+        case return_h: return parser::make_RETURN();
+        default: assert(false); return parser::make_END();
+      }
     }
   }
 
