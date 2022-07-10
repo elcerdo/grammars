@@ -49,7 +49,7 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 
 %token END 0
 %token<TypeId> TYPE
-%token PAREN_OPEN COMMA PAREN_CLOSE SEMICOLON SCOPE_OPEN SCOPE_CLOSE RETURN EQUAL
+%token PAREN_OPEN COMMA PAREN_CLOSE SEMICOLON BRACKET_OPEN BRACKET_CLOSE RETURN EQUAL
 %left PLUS
 %token<IdentId> IDENTIFIER
 /* %token<FuncId> FUNC_START
@@ -58,7 +58,7 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 
 %nterm<FuncArg> func_arg
 %nterm<FuncArgs> func_args func_extra_args
-%nterm<IdentId> func_proto
+%nterm<IdentId> func_proto scope_open
 %nterm<size_t> statements
 %nterm<Graph::Node> expr
 /*%nterm<Scalar> expr func_call var_lookup
@@ -77,10 +77,39 @@ declaration: SEMICOLON { assert(parser_state); parser_state->num_empty_declarati
            | func_proto SEMICOLON
            | func_impl
 
-func_impl: func_proto SCOPE_OPEN statements SCOPE_CLOSE {
+func_impl:  scope_open statements BRACKET_CLOSE {
   spdlog::debug("[func_impl] identifier \"{}\" num_statements {} !!!",
     $1,
-    $3);
+    $2);
+}
+
+scope_open: func_proto BRACKET_OPEN {
+  assert(parser_state);
+  const auto& func_protos = parser_state->func_protos;
+  auto& graph = parser_state->graph;
+  auto& node_to_func_args = parser_state->node_to_func_args;
+
+  spdlog::debug("[scope_open] identifier \"{}\"", $1);
+
+  const auto iter_proto = func_protos.find($1);
+  if (iter_proto == std::cend(func_protos))
+    throw syntax_error("unknown prototype");
+
+  assert(iter_proto != std::cend(func_protos));
+  const auto& [ret_type, args] = iter_proto->second;
+
+  spdlog::debug("[scope_open] ret_type {} nargs {}",
+    ret_type,
+    args.size());
+
+  graph.clear();
+
+  for (const auto& arg : args) {
+    const auto node = graph.addNode();
+    node_to_func_args[node] = arg;
+  }
+
+  $$ = $1;
 }
 
 statements: %empty { $$ = 0; }
@@ -95,10 +124,10 @@ expr: IDENTIFIER {
 
   assert(parser_state);
   auto& graph = parser_state->graph;
-  auto& node_to_names = parser_state->node_to_names;
+  auto& node_to_func_args = parser_state->node_to_func_args;
 
   const auto node = graph.addNode();
-  node_to_names[node] = $1;
+  node_to_func_args[node] = {TypeId::Float, $1};
 
   $$ = node;
 }
@@ -107,14 +136,14 @@ expr: IDENTIFIER {
 
   assert(parser_state);
   auto& graph = parser_state->graph;
-  auto& node_to_names = parser_state->node_to_names;
+  auto& node_to_func_args = parser_state->node_to_func_args;
   auto& arc_to_names = parser_state->arc_to_names;
 
   const auto nleft = $1;
   const auto nright = $3;
 
   const auto node = graph.addNode();
-  node_to_names[node] = "ADD";
+  node_to_func_args[node] = {TypeId::Float, "ADD"};
 
   const auto aleft = graph.addArc(node, nleft);
   const auto aright = graph.addArc(node, nright);
@@ -217,7 +246,7 @@ func_args: %empty { $$ = {}; }
 
 exprtree::Payload::Payload()
   : graph()
-  , node_to_names(graph)
+  , node_to_func_args(graph)
   , arc_to_names(graph)
 {
 }
@@ -271,8 +300,8 @@ auto exprtree::yylex(LexerState& lex_state) -> parser::symbol_type
       case ',': advance_tick(1); return parser::make_COMMA();
       case ')': advance_tick(1); return parser::make_PAREN_CLOSE();
       case ';': advance_tick(1); return parser::make_SEMICOLON();
-      case '{': advance_tick(1); return parser::make_SCOPE_OPEN();
-      case '}': advance_tick(1); return parser::make_SCOPE_CLOSE();
+      case '{': advance_tick(1); return parser::make_BRACKET_OPEN();
+      case '}': advance_tick(1); return parser::make_BRACKET_CLOSE();
       case '+': advance_tick(1); return parser::make_PLUS();
       case '=': advance_tick(1); return parser::make_EQUAL();
       default: break;
@@ -374,7 +403,7 @@ auto exprtree::run_parser(const std::string& source) -> std::unique_ptr<Payload>
 
     assert(parser_state);
     const auto& graph = parser_state->graph;
-    const auto& node_to_names = parser_state->node_to_names;
+    const auto& node_to_func_args = parser_state->node_to_func_args;
     const auto& arc_to_names = parser_state->arc_to_names;
 
     spdlog::debug("[run_parser] num_nodes {} num_arcs {}",
@@ -382,9 +411,10 @@ auto exprtree::run_parser(const std::string& source) -> std::unique_ptr<Payload>
       countArcs(graph));
 
     for (NodeIt ni(graph); ni!=INVALID; ++ni) {
-      const auto& name = node_to_names[ni];
-      spdlog::debug("[run_parser] NN{:03d} \"{}\"",
+      const auto& [type, name] = node_to_func_args[ni];
+      spdlog::debug("[run_parser] NN{:03d} {} \"{}\"",
         graph.id(ni),
+        type,
         name);
     }
 

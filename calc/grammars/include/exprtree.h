@@ -28,7 +28,7 @@ using FuncPrototypes = std::unordered_map<IdentId, std::tuple<TypeId, FuncArgs>>
 struct Payload {
   Payload();
   Graph graph;
-  Graph::NodeMap<IdentId> node_to_names;
+  Graph::NodeMap<FuncArg> node_to_func_args;
   Graph::ArcMap<IdentId> arc_to_names;
 
   FuncPrototypes func_protos = {};
