@@ -232,7 +232,7 @@ auto exprtree::yylex(LexerState& lex_state) -> parser::symbol_type
   }
 
   { // separator
-    static const std::regex re("^[ \n]+");
+    static const std::regex re("^[ ]+");
     std::smatch match;
     if (std::regex_search(current, match, re)) {
       advance_match(match);
@@ -289,7 +289,9 @@ auto exprtree::parser::error(const std::string& msg) -> void
 
 auto exprtree::run_parser(const std::string& source) -> std::unique_ptr<Payload>
 {
-  auto lex_state = std::make_unique<std::string>(source);
+  static const std::regex re_clean("[\r\t\n]");
+  auto lex_state = std::make_unique<std::string>(std::regex_replace(source, re_clean, " "));
+
   auto parser_state = std::make_unique<Payload>();
   assert(parser_state);
   assert(lex_state);

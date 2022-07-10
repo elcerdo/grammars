@@ -68,7 +68,11 @@ TEST_CASE("test exprtree", "[grammars][exprtree]")
   test_exprtree("float coucou(vec2 aa, float bb); ", std::make_tuple(1, 0));
   test_exprtree(" float coucou(vec2 aa, float bb); ", std::make_tuple(1, 0));
   test_exprtree(" float coucou ( vec2 aa , float bb ) ; ", std::make_tuple(1, 0));
-  /*test_exprtree(R"( FIXME
+  test_exprtree("float hello(float aa); float world();", std::make_tuple(2, 0));
+  test_exprtree("float hello(float aa);; float world();;;;", std::make_tuple(2, 4));
+  test_exprtree(R"(float hello(float aa);
+   float world();)", std::make_tuple(2, 0));
+  test_exprtree(R"(
 
 float coucou(vec2 aa, float bb);
 float hello(float bb);
@@ -97,5 +101,5 @@ float coucou(vec2 aa, float bb) {
   return cc + aa;
 }
 
-)", std::make_tuple(1, 0));*/
+)", std::make_tuple(1, 0));
 }
