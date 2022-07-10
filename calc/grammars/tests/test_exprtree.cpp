@@ -4,6 +4,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include <optional>
+
 TEST_CASE("test lemon", "[grammars][lemon]")
 {
   using Graph = lemon::ListDigraph;
