@@ -77,7 +77,7 @@ declaration: SEMICOLON { assert(parser_state); parser_state->num_empty_declarati
            | func_proto SEMICOLON
            | func_impl
 
-func_impl:  scope_open statements BRACKET_CLOSE {
+func_impl: scope_open statements BRACKET_CLOSE {
   spdlog::debug("[func_impl] identifier \"{}\" num_statements {} !!!",
     $1,
     $2);
