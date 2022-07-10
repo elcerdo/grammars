@@ -49,7 +49,8 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 
 %token END 0
 %token<TypeId> TYPE
-%token SEP PAREN_OPEN COMMA PAREN_CLOSE SEMICOLON SCOPE_OPEN SCOPE_CLOSE RETURN PLUS EQUAL
+%token SEP PAREN_OPEN COMMA PAREN_CLOSE SEMICOLON SCOPE_OPEN SCOPE_CLOSE RETURN EQUAL
+%left PLUS
 %token<IdentId> IDENTIFIER
 /* %token<FuncId> FUNC_START
 %token FUNC_END
@@ -92,7 +93,7 @@ statement: SEMICOLON
          | TYPE SEP IDENTIFIER skip EQUAL skip expr skip SEMICOLON
 
 expr: IDENTIFIER { spdlog::debug("[expr] var_lookup \"{}\"", $1); }
-    | expr skip PLUS skip expr { spdlog::debug("[expr] addition"); }
+    | expr PLUS skip expr { spdlog::debug("[expr] addition"); }
 
 func_proto: TYPE SEP IDENTIFIER skip PAREN_OPEN skip func_args PAREN_CLOSE {
   std::vector<std::string> func_args_;
