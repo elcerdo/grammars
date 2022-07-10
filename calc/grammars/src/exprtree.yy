@@ -88,6 +88,7 @@ scope_open: func_proto BRACKET_OPEN {
   const auto& func_protos = parser_state->func_protos;
   auto& graph = parser_state->graph;
   auto& node_to_func_args = parser_state->node_to_func_args;
+  auto& defined_vars = parser_state->defined_vars;
 
   spdlog::debug("[scope_open] identifier \"{}\"", $1);
 
@@ -103,10 +104,13 @@ scope_open: func_proto BRACKET_OPEN {
     args.size());
 
   graph.clear();
+  defined_vars.clear();
 
   for (const auto& arg : args) {
     const auto node = graph.addNode();
     node_to_func_args[node] = arg;
+    const auto ret = defined_vars.emplace(std::get<1>(arg), node);
+    assert(std::get<1>(ret));
   }
 
   $$ = $1;
@@ -123,11 +127,17 @@ expr: IDENTIFIER {
   spdlog::debug("[expr] var_lookup \"{}\"", $1);
 
   assert(parser_state);
-  auto& graph = parser_state->graph;
-  auto& node_to_func_args = parser_state->node_to_func_args;
+  const auto& graph = parser_state->graph;
+  const auto& node_to_func_args = parser_state->node_to_func_args;
+  const auto& defined_vars = parser_state->defined_vars;
 
-  const auto node = graph.addNode();
-  node_to_func_args[node] = {TypeId::Float, $1};
+  const auto iter_var = defined_vars.find($1);
+  if (iter_var == std::cend(defined_vars))
+    throw syntax_error("unknown variable");
+
+  assert(iter_var != std::cend(defined_vars));
+  const auto node = iter_var->second;
+  assert(graph.valid(node));
 
   $$ = node;
 }
@@ -141,9 +151,15 @@ expr: IDENTIFIER {
 
   const auto nleft = $1;
   const auto nright = $3;
+  const auto& [left_type, left_name] = node_to_func_args[nleft];
+  const auto& [right_type, right_name] = node_to_func_args[nleft];
 
+  if (left_type != right_type)
+    throw syntax_error("mismatching add types");
+
+  assert(left_type == right_type);
   const auto node = graph.addNode();
-  node_to_func_args[node] = {TypeId::Float, "ADD"};
+  node_to_func_args[node] = {left_type, "ADD"};
 
   const auto aleft = graph.addArc(node, nleft);
   const auto aright = graph.addArc(node, nright);

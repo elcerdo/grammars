@@ -24,6 +24,7 @@ using FuncArgs = std::list<FuncArg>;
 
 using Graph = lemon::ListDigraph;
 using FuncPrototypes = std::unordered_map<IdentId, std::tuple<TypeId, FuncArgs>>;
+using DefinedVars = std::unordered_map<IdentId, Graph::Node>;
 
 struct Payload {
   Payload();
@@ -31,6 +32,7 @@ struct Payload {
   Graph::NodeMap<FuncArg> node_to_func_args;
   Graph::ArcMap<IdentId> arc_to_names;
 
+  DefinedVars defined_vars = {};
   FuncPrototypes func_protos = {};
   size_t num_empty_declarations = 0;
 };
