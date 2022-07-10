@@ -1,6 +1,7 @@
 #include <catch2/catch.hpp>
 
 #include <exprtree.h>
+#include <lemon/bfs.h>
 
 #include <spdlog/spdlog.h>
 
@@ -29,6 +30,11 @@ TEST_CASE("test lemon", "[grammars][lemon][exprtree]")
 
 void test_exprtree(const std::string& input, const std::optional<std::tuple<size_t, size_t>> ret_)
 {
+  using exprtree::Graph;
+  using NodeIt = Graph::NodeIt;
+  using ArcIt = Graph::ArcIt;
+  using namespace lemon;
+
   spdlog::critical("test exprtree");
 
   spdlog::info("input \"{}\"", input);
@@ -39,12 +45,39 @@ void test_exprtree(const std::string& input, const std::optional<std::tuple<size
 
   REQUIRE(static_cast<bool>(ret) == static_cast<bool>(ret_));
 
-  if (ret) {
-    REQUIRE(ret_);
-    const auto& [num_func_protos, num_empty_declarations] = *ret_;
-    REQUIRE(ret->func_protos.size() == num_func_protos);
-    REQUIRE(ret->num_empty_declarations == num_empty_declarations);
+  if (!ret)
+    return;
+
+  REQUIRE(ret);
+  auto& graph = ret->graph;
+  const auto& node_to_func_args = ret->node_to_func_args;
+  const auto& ret_node = ret->ret_node;
+
+  spdlog::info("num_nodes {} num_arcs {} has_ret_node {}",
+    countNodes(graph),
+    countArcs(graph),
+    graph.valid(ret_node));
+
+  Graph::NodeMap<int> node_to_distances(graph, -1);
+  if (graph.valid(ret_node))
+    lemon::bfs(graph).distMap(node_to_distances).run(ret_node);
+
+  for (NodeIt ni(graph); ni!=INVALID; ++ni) {
+    const auto& [type, name] = node_to_func_args[ni];
+    spdlog::info("[run_parser] NN{:03d} dist {:2} type {} out {} in {} \"{}\"{}",
+      graph.id(ni),
+      node_to_distances[ni],
+      type,
+      countOutArcs(graph, ni),
+      countInArcs(graph, ni),
+      name,
+      ni == ret_node ? " RETURN" : "");
   }
+
+  REQUIRE(ret_);
+  const auto& [num_func_protos, num_empty_declarations] = *ret_;
+  REQUIRE(ret->func_protos.size() == num_func_protos);
+  REQUIRE(ret->num_empty_declarations == num_empty_declarations);
 }
 
 TEST_CASE("test exprtree", "[grammars][exprtree]")
@@ -102,12 +135,42 @@ float coucou(vec2 aa, float bb) {
 }
 
 )", std::make_tuple(1, 0));
-  /*test_exprtree(R"(
+  test_exprtree(R"(
 
 float coucou(vec2 aa, float bb) {
+  return bb;
+  return aa;
+}
+
+)", {});
+  test_exprtree(R"(
+
+float coucou(vec2 aa, float bb) {
+  vec2 xx = aa;
+}
+
+)", {});
+  test_exprtree(R"(
+
+float coucou(vec2 aa, float bb) {
+  return cc;
+}
+
+)", {});
+  test_exprtree(R"(
+
+float coucou(float aa, float bb) {
+  float cc = aa + bb;
+  return bb + aa;
+}
+
+)", std::make_tuple(1, 0));
+  test_exprtree(R"(
+
+vec2 coucou(vec2 aa, vec2 bb) {
   vec2 cc = aa + bb;
   return cc + aa;
 }
 
-)", std::make_tuple(1, 0));*/
+)", std::make_tuple(1, 0));
 }

@@ -31,8 +31,9 @@ struct Payload {
   Graph graph;
   Graph::NodeMap<FuncArg> node_to_func_args;
   Graph::ArcMap<IdentId> arc_to_names;
-
   DefinedVars defined_vars = {};
+  Graph::Node ret_node = lemon::INVALID;
+
   FuncPrototypes func_protos = {};
   size_t num_empty_declarations = 0;
 };

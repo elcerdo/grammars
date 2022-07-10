@@ -78,9 +78,32 @@ declaration: SEMICOLON { assert(parser_state); parser_state->num_empty_declarati
            | func_impl
 
 func_impl: scope_open statements BRACKET_CLOSE {
-  spdlog::debug("[func_impl] identifier \"{}\" num_statements {} !!!",
+  assert(parser_state);
+  const auto& func_protos = parser_state->func_protos;
+  const auto& graph = parser_state->graph;
+  const auto& node_to_func_args = parser_state->node_to_func_args;
+  const auto& ret_node = parser_state->ret_node;
+
+  spdlog::debug("[func_impl] identifier \"{}\" num_statements {} has_ret_node {}",
     $1,
-    $2);
+    $2,
+    graph.valid(ret_node));
+
+  if (!graph.valid(ret_node))
+    throw syntax_error("invalid ret node");
+
+  const auto iter_proto = func_protos.find($1);
+  if (iter_proto == std::cend(func_protos))
+    throw syntax_error("unknown prototype");
+
+  assert(iter_proto != std::cend(func_protos));
+  const auto& [ret_type, args] = iter_proto->second;
+
+  assert(graph.valid(ret_node));
+  const auto& [ret_type_, ret_name] = node_to_func_args[ret_node];
+
+  if (ret_type_ != ret_type)
+    throw syntax_error("invalid return type");
 }
 
 scope_open: func_proto BRACKET_OPEN {
@@ -88,6 +111,7 @@ scope_open: func_proto BRACKET_OPEN {
   const auto& func_protos = parser_state->func_protos;
   auto& graph = parser_state->graph;
   auto& node_to_func_args = parser_state->node_to_func_args;
+  auto& ret_node = parser_state->ret_node;
   auto& defined_vars = parser_state->defined_vars;
 
   spdlog::debug("[scope_open] identifier \"{}\"", $1);
@@ -105,6 +129,7 @@ scope_open: func_proto BRACKET_OPEN {
 
   graph.clear();
   defined_vars.clear();
+  ret_node = lemon::INVALID;
 
   for (const auto& arg : args) {
     const auto node = graph.addNode();
@@ -120,8 +145,27 @@ statements: %empty { $$ = 0; }
           | statements statement { $$ = $1; $$++; }
 
 statement: SEMICOLON
-         | RETURN expr SEMICOLON
-         | TYPE IDENTIFIER EQUAL expr SEMICOLON
+         | RETURN expr SEMICOLON {
+  assert(parser_state);
+  const auto& graph = parser_state->graph;
+  auto& ret_node = parser_state->ret_node;
+
+  if (graph.valid(ret_node))
+    throw syntax_error("multiple return");
+
+  ret_node = $2;
+}
+         | TYPE IDENTIFIER EQUAL expr SEMICOLON {
+  assert(parser_state);
+  auto& defined_vars = parser_state->defined_vars;
+
+  const auto iter_var = defined_vars.find($2);
+  if (iter_var != std::cend(defined_vars))
+    throw syntax_error("variable already defined");
+
+  const auto ret = defined_vars.emplace($2, $4);
+  assert(std::get<1>(ret));
+}
 
 expr: IDENTIFIER {
   spdlog::debug("[expr] var_lookup \"{}\"", $1);
@@ -151,8 +195,8 @@ expr: IDENTIFIER {
 
   const auto nleft = $1;
   const auto nright = $3;
-  const auto& [left_type, left_name] = node_to_func_args[nleft];
-  const auto& [right_type, right_name] = node_to_func_args[nleft];
+  const auto [left_type, left_name] = node_to_func_args[nleft];
+  const auto [right_type, right_name] = node_to_func_args[nright];
 
   if (left_type != right_type)
     throw syntax_error("mismatching add types");
