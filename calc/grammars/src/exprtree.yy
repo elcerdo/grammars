@@ -51,7 +51,7 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 
 %token END 0
 %token<TypeId> TYPE
-%token SEP PAREN_OPEN COMMA PAREN_CLOSE SEMICOLON SCOPE_OPEN SCOPE_CLOSE RETURN PLUS
+%token SEP PAREN_OPEN COMMA PAREN_CLOSE SEMICOLON SCOPE_OPEN SCOPE_CLOSE RETURN PLUS EQUAL
 %token<IdentId> IDENTIFIER
 /* %token<FuncId> FUNC_START
 %token FUNC_END
@@ -87,13 +87,14 @@ func_impl: func_proto skip SCOPE_OPEN statements skip SCOPE_CLOSE {
 }
 
 statements: %empty { $$ = 0; }
-          | statements skip statement { $$++; }
+          | statements skip statement { $$ = $1; $$++; }
 
 statement: SEMICOLON
-         | RETURN SEP expr SEMICOLON
+         | RETURN SEP expr skip SEMICOLON
+         | TYPE SEP IDENTIFIER skip EQUAL skip expr skip SEMICOLON
 
 expr: IDENTIFIER { spdlog::debug("[expr] var_lookup \"{}\"", $1); }
-    /* | expr PLUS expr { spdlog::debug("[expr] addition"); } */
+    | expr skip PLUS skip expr { spdlog::debug("[expr] addition"); }
 
 func_proto: TYPE SEP IDENTIFIER skip PAREN_OPEN skip func_args PAREN_CLOSE {
   std::vector<std::string> func_args_;
@@ -227,6 +228,7 @@ auto exprtree::yylex(LexerState& lex_state) -> parser::symbol_type
       case '{': advance_tick(1); return parser::make_SCOPE_OPEN();
       case '}': advance_tick(1); return parser::make_SCOPE_CLOSE();
       case '+': advance_tick(1); return parser::make_PLUS();
+      case '=': advance_tick(1); return parser::make_EQUAL();
       default: break;
     }
   }
