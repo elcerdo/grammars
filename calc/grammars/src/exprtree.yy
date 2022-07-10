@@ -29,9 +29,7 @@ using VarIdToScalars = std::unordered_map<VarId, Scalar>;
 using FuncIdToAnyFunctors = std::unordered_map<FuncId, AnyFunctor>; */
 
 
-struct LexerState {
-  std::string current; // FIXME may get away with only using iterators
-};
+using LexerState = std::unique_ptr<std::string>;
 
 using ParserState = std::unique_ptr<exprtree::Payload>;
 
@@ -203,18 +201,18 @@ constexpr size_t shash(char const * ii)
 
 auto exprtree::yylex(LexerState& lex_state) -> parser::symbol_type
 {
-  const auto current = lex_state.current;
+  const auto current = *lex_state;
   const auto advance_match = [&lex_state, &current](const std::smatch& match) -> void {
-    lex_state.current = match.suffix().str();
+    *lex_state = match.suffix().str();
     spdlog::trace("[advance] \"{}\" -> \"{}\"",
       current,
-      lex_state.current);
+      *lex_state);
   };
   const auto advance_tick = [&lex_state, &current](const size_t nn) -> void {
-    lex_state.current.erase(0, nn);
+    lex_state->erase(0, nn);
     spdlog::trace("[advance] \"{}\" -> \"{}\"",
       current,
-      lex_state.current);
+      *lex_state);
     assert(nn > 0);
   };
 
@@ -291,12 +289,10 @@ auto exprtree::parser::error(const std::string& msg) -> void
 
 auto exprtree::run_parser(const std::string& source) -> std::unique_ptr<Payload>
 {
-  LexerState lex_state {
-    source,
-  };
-
+  auto lex_state = std::make_unique<std::string>(source);
   auto parser_state = std::make_unique<Payload>();
   assert(parser_state);
+  assert(lex_state);
 
   /*parser_state.var_id_to_scalars["xx"] = xx_value;
   parser_state.func_id_to_functors[FuncId::Zero] = []() -> Scalar { return 0; };
@@ -313,10 +309,12 @@ auto exprtree::run_parser(const std::string& source) -> std::unique_ptr<Payload>
 #endif
 
   const auto parsing_err = parser();
+
   spdlog::debug("[run_parser] parsing_err {} num_empty_declarations {} num_func_protos {}",
     parsing_err,
     parser_state->num_empty_declarations,
     parser_state->func_protos.size());
+
   for (const auto& [ident_id, data] : parser_state->func_protos) {
     const auto& [ret_type_id, func_args] = data;
     std::vector<std::string> foo;
