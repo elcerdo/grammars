@@ -173,4 +173,20 @@ vec2 coucou(vec2 aa, vec2 bb) {
 }
 
 )", std::make_tuple(1, 0));
+  test_exprtree(R"(
+
+vec2 coucou(vec2 aa, vec2 bb) {
+  vec2 cc = aa + bb;
+  return cc + aa * cc;
+}
+
+)", std::make_tuple(1, 0));
+  test_exprtree(R"(
+
+vec2 coucou(vec2 aa, vec2 bb) {
+  vec2 cc = aa + bb;
+  return cc + (aa * cc);
+}
+
+)", std::make_tuple(1, 0));
 }

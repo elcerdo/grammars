@@ -51,6 +51,7 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 %token<TypeId> TYPE
 %token PAREN_OPEN COMMA PAREN_CLOSE SEMICOLON BRACKET_OPEN BRACKET_CLOSE RETURN EQUAL
 %left PLUS
+%left MUL
 %token<IdentId> IDENTIFIER
 /* %token<FuncId> FUNC_START
 %token FUNC_END
@@ -212,6 +213,52 @@ expr: IDENTIFIER {
 
   $$ = node;
 }
+    | PAREN_OPEN expr PAREN_CLOSE {
+  spdlog::debug("[expr] parenthesis");
+
+  assert(parser_state);
+  auto& graph = parser_state->graph;
+  auto& node_to_func_args = parser_state->node_to_func_args;
+  auto& arc_to_names = parser_state->arc_to_names;
+
+  const auto node_ = $2;
+  const auto [type_, name_] = node_to_func_args[node_];
+
+  const auto node = graph.addNode();
+  node_to_func_args[node] = {type_, "PAR"};
+
+  const auto arc = graph.addArc(node, node_);
+  arc_to_names[arc] = "sin";
+
+  $$ = node;
+}
+    | expr MUL expr {
+  spdlog::debug("[expr] multiplication");
+
+  assert(parser_state);
+  auto& graph = parser_state->graph;
+  auto& node_to_func_args = parser_state->node_to_func_args;
+  auto& arc_to_names = parser_state->arc_to_names;
+
+  const auto nleft = $1;
+  const auto nright = $3;
+  const auto [left_type, left_name] = node_to_func_args[nleft];
+  const auto [right_type, right_name] = node_to_func_args[nright];
+
+  if (left_type != right_type)
+    throw syntax_error("mismatching mul types");
+
+  assert(left_type == right_type);
+  const auto node = graph.addNode();
+  node_to_func_args[node] = {left_type, "MUL"};
+
+  const auto aleft = graph.addArc(node, nleft);
+  const auto aright = graph.addArc(node, nright);
+  arc_to_names[aleft] = "left";
+  arc_to_names[aright] = "right";
+
+  $$ = node;
+}
 
 func_proto: TYPE IDENTIFIER PAREN_OPEN func_args PAREN_CLOSE {
   std::vector<std::string> func_args_;
@@ -364,6 +411,7 @@ auto exprtree::yylex(LexerState& lex_state) -> parser::symbol_type
       case '}': advance_tick(1); return parser::make_BRACKET_CLOSE();
       case '+': advance_tick(1); return parser::make_PLUS();
       case '=': advance_tick(1); return parser::make_EQUAL();
+      case '*': advance_tick(1); return parser::make_MUL();
       default: break;
     }
   }
