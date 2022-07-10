@@ -60,6 +60,7 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 %nterm<FuncArgs> func_args func_extra_args
 %nterm<IdentId> func_proto
 %nterm<size_t> statements
+%nterm<Graph::Node> expr
 /*%nterm<Scalar> expr func_call var_lookup
 %nterm<std::vector<Scalar>> func_args */
 
@@ -89,8 +90,39 @@ statement: SEMICOLON
          | RETURN expr SEMICOLON
          | TYPE IDENTIFIER EQUAL expr SEMICOLON
 
-expr: IDENTIFIER { spdlog::debug("[expr] var_lookup \"{}\"", $1); }
-    | expr PLUS expr { spdlog::debug("[expr] addition"); }
+expr: IDENTIFIER {
+  spdlog::debug("[expr] var_lookup \"{}\"", $1);
+
+  assert(parser_state);
+  auto& graph = parser_state->graph;
+  auto& node_to_names = parser_state->node_to_names;
+
+  const auto node = graph.addNode();
+  node_to_names[node] = $1;
+
+  $$ = node;
+}
+    | expr PLUS expr {
+  spdlog::debug("[expr] addition");
+
+  assert(parser_state);
+  auto& graph = parser_state->graph;
+  auto& node_to_names = parser_state->node_to_names;
+  auto& arc_to_names = parser_state->arc_to_names;
+
+  const auto nleft = $1;
+  const auto nright = $3;
+
+  const auto node = graph.addNode();
+  node_to_names[node] = "ADD";
+
+  const auto aleft = graph.addArc(node, nleft);
+  const auto aright = graph.addArc(node, nright);
+  arc_to_names[aleft] = "left";
+  arc_to_names[aright] = "right";
+
+  $$ = node;
+}
 
 func_proto: TYPE IDENTIFIER PAREN_OPEN func_args PAREN_CLOSE {
   std::vector<std::string> func_args_;
@@ -185,7 +217,8 @@ func_args: %empty { $$ = {}; }
 
 exprtree::Payload::Payload()
   : graph()
-  , foobar(graph)
+  , node_to_names(graph)
+  , arc_to_names(graph)
 {
 }
 
@@ -336,17 +369,33 @@ auto exprtree::run_parser(const std::string& source) -> std::unique_ptr<Payload>
 
   { // dump graph
     using NodeIt = Graph::NodeIt;
+    using ArcIt = Graph::ArcIt;
     using namespace lemon;
 
     assert(parser_state);
     const auto& graph = parser_state->graph;
+    const auto& node_to_names = parser_state->node_to_names;
+    const auto& arc_to_names = parser_state->arc_to_names;
 
     spdlog::debug("[run_parser] num_nodes {} num_arcs {}",
       countNodes(graph),
       countArcs(graph));
 
-    for (NodeIt ni(graph); ni!=INVALID; ++ni)
-      spdlog::debug("[run_parser] NN {}", graph.id(ni));
+    for (NodeIt ni(graph); ni!=INVALID; ++ni) {
+      const auto& name = node_to_names[ni];
+      spdlog::debug("[run_parser] NN{:03d} \"{}\"",
+        graph.id(ni),
+        name);
+    }
+
+    for (ArcIt ai(graph); ai!=INVALID; ++ai) {
+      const auto& name = arc_to_names[ai];
+      spdlog::debug("[run_parser] AA{:03d} NN{:03d} -> NN{:03d} \"{}\"",
+        graph.id(ai),
+        graph.id(graph.source(ai)),
+        graph.id(graph.target(ai)),
+        name);
+    }
   }
 
   if (parsing_err) return {};
