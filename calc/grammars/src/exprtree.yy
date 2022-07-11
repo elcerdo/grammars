@@ -228,7 +228,7 @@ expr: IDENTIFIER {
   node_to_func_args[node] = {type_, "PAR"};
 
   const auto arc = graph.addArc(node, node_);
-  arc_to_names[arc] = "sin";
+  arc_to_names[arc] = "single";
 
   $$ = node;
 }
@@ -356,6 +356,15 @@ exprtree::Payload::Payload()
   , node_to_func_args(graph)
   , arc_to_names(graph)
 {
+}
+
+std::string exprtree::to_string(const TypeId type_id)
+{
+  switch (type_id) {
+    case TypeId::Float: return "float";
+    case TypeId::Vec2: return "vec2";
+    default: return "??";
+  }
 }
 
 constexpr size_t shash(char const * ii)

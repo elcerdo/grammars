@@ -10,7 +10,6 @@
 
 namespace exprtree {
 
-
 enum struct TypeId {
   Float,
   Vec2,
@@ -38,6 +37,7 @@ struct Payload {
   size_t num_empty_declarations = 0;
 };
 
+std::string to_string(const TypeId type_id);
 auto run_parser(const std::string& source) -> std::unique_ptr<Payload>;
 
 }

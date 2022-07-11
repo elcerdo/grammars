@@ -65,8 +65,10 @@ void test_exprtree(
     graph.valid(ret_node));
 
   Graph::NodeMap<int> node_to_distances(graph, -1);
-  if (graph.valid(ret_node))
+  if (graph.valid(ret_node)) {
+    spdlog::info("running bfs");
     lemon::bfs(graph).distMap(node_to_distances).run(ret_node);
+  }
 
   for (NodeIt ni(graph); ni!=INVALID; ++ni) {
     const auto& [type, name] = node_to_func_args[ni];
@@ -85,12 +87,18 @@ void test_exprtree(
     using std::endl;
     std::ofstream handle(dot_path.string().c_str());
     handle << "digraph {" << endl;
-    for (NodeIt ni(graph); ni!=INVALID; ++ni)
+    for (NodeIt ni(graph); ni!=INVALID; ++ni) {
+      const auto is_reached = node_to_distances[ni] >= 0;
+      const auto& [node_type, node_name] = node_to_func_args[ni];
+      const auto shape = fmt::format("{}{}",
+        is_reached ? "double" : "",
+        ni == ret_node ? "octagon" : "circle");
       handle << fmt::format("nn{:03d} [label=\"{} {}\" shape={}];",
         graph.id(ni),
-        std::get<1>(node_to_func_args[ni]),
-        node_to_distances[ni],
-        ni == ret_node ? "box" : "circle") << endl;
+        exprtree::to_string(node_type),
+        node_name,
+        shape) << endl;
+    }
     for (ArcIt ai(graph); ai!=INVALID; ++ai)
       handle << fmt::format("nn{:03d} -> nn{:03d} [label=\"{}\"];",
         graph.id(graph.source(ai)),
@@ -210,6 +218,7 @@ vec2 coucou(vec2 aa, vec2 bb) {
 
 vec2 coucou(vec2 aa, vec2 bb) {
   vec2 cc = aa + bb;
+  vec2 dd = bb + cc;
   return cc + (aa * cc);
 }
 
