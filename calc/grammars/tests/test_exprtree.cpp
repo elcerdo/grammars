@@ -6,6 +6,8 @@
 #include <spdlog/spdlog.h>
 
 #include <optional>
+#include <filesystem>
+#include <fstream>
 
 TEST_CASE("test lemon", "[grammars][lemon][exprtree]")
 {
@@ -28,7 +30,10 @@ TEST_CASE("test lemon", "[grammars][lemon][exprtree]")
   REQUIRE(lemon::countArcs(graph) == 1);
 }
 
-void test_exprtree(const std::string& input, const std::optional<std::tuple<size_t, size_t>> ret_)
+void test_exprtree(
+  const std::string& input,
+  const std::optional<std::tuple<size_t, size_t>> ret_,
+  const std::filesystem::path& dot_path = "")
 {
   using exprtree::Graph;
   using NodeIt = Graph::NodeIt;
@@ -51,6 +56,7 @@ void test_exprtree(const std::string& input, const std::optional<std::tuple<size
   REQUIRE(ret);
   auto& graph = ret->graph;
   const auto& node_to_func_args = ret->node_to_func_args;
+  const auto& arc_to_names = ret->arc_to_names;
   const auto& ret_node = ret->ret_node;
 
   spdlog::info("num_nodes {} num_arcs {} has_ret_node {}",
@@ -72,6 +78,25 @@ void test_exprtree(const std::string& input, const std::optional<std::tuple<size
       countInArcs(graph, ni),
       name,
       ni == ret_node ? " RETURN" : "");
+  }
+
+  if (!dot_path.empty()) { // dot dump
+    spdlog::info("saving \"{}\"", dot_path.string());
+    using std::endl;
+    std::ofstream handle(dot_path.string().c_str());
+    handle << "digraph {" << endl;
+    for (NodeIt ni(graph); ni!=INVALID; ++ni)
+      handle << fmt::format("nn{:03d} [label=\"{} {}\" shape={}];",
+        graph.id(ni),
+        std::get<1>(node_to_func_args[ni]),
+        node_to_distances[ni],
+        ni == ret_node ? "box" : "circle") << endl;
+    for (ArcIt ai(graph); ai!=INVALID; ++ai)
+      handle << fmt::format("nn{:03d} -> nn{:03d} [label=\"{}\"];",
+        graph.id(graph.source(ai)),
+        graph.id(graph.target(ai)),
+        arc_to_names[ai]) << endl;
+    handle << "}" << endl;
   }
 
   REQUIRE(ret_);
@@ -188,5 +213,5 @@ vec2 coucou(vec2 aa, vec2 bb) {
   return cc + (aa * cc);
 }
 
-)", std::make_tuple(1, 0));
+)", std::make_tuple(1, 0), "foobar.dot");
 }
