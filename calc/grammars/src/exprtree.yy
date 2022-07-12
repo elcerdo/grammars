@@ -59,7 +59,7 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 
 %nterm<FuncArg> func_arg
 %nterm<FuncArgs> func_args func_extra_args
-%nterm<IdentId> func_proto scope_open
+%nterm<IdentId> func_proto func_impl_open
 %nterm<size_t> statements
 %nterm<Graph::Node> expr
 /*%nterm<Scalar> expr func_call var_lookup
@@ -74,11 +74,12 @@ result: declarations
 declarations: %empty
             | declarations declaration
 
-declaration: SEMICOLON { assert(parser_state); parser_state->num_empty_declarations++; }
+declaration: SEMICOLON
            | func_proto SEMICOLON
            | func_impl
 
-func_impl: scope_open statements BRACKET_CLOSE {
+func_impl: func_impl_open statements BRACKET_CLOSE
+{
   assert(parser_state);
   const auto& func_protos = parser_state->func_protos;
   const auto& graph = parser_state->graph;
@@ -107,7 +108,8 @@ func_impl: scope_open statements BRACKET_CLOSE {
     throw syntax_error("invalid return type");
 }
 
-scope_open: func_proto BRACKET_OPEN {
+func_impl_open: func_proto BRACKET_OPEN
+{
   assert(parser_state);
   const auto& func_protos = parser_state->func_protos;
   auto& graph = parser_state->graph;
@@ -146,7 +148,8 @@ statements: %empty { $$ = 0; }
           | statements statement { $$ = $1; $$++; }
 
 statement: SEMICOLON
-         | RETURN expr SEMICOLON {
+         | RETURN expr SEMICOLON
+{
   assert(parser_state);
   const auto& graph = parser_state->graph;
   auto& ret_node = parser_state->ret_node;
@@ -156,7 +159,8 @@ statement: SEMICOLON
 
   ret_node = $2;
 }
-         | TYPE IDENTIFIER EQUAL expr SEMICOLON {
+         | TYPE IDENTIFIER EQUAL expr SEMICOLON
+{
   assert(parser_state);
   auto& defined_vars = parser_state->defined_vars;
 
@@ -168,7 +172,8 @@ statement: SEMICOLON
   assert(std::get<1>(ret));
 }
 
-expr: IDENTIFIER {
+expr: IDENTIFIER
+{
   spdlog::debug("[expr] var_lookup \"{}\"", $1);
 
   assert(parser_state);
@@ -186,7 +191,8 @@ expr: IDENTIFIER {
 
   $$ = node;
 }
-    | expr PLUS expr {
+    | expr PLUS expr
+{
   spdlog::debug("[expr] addition");
 
   assert(parser_state);
@@ -213,26 +219,8 @@ expr: IDENTIFIER {
 
   $$ = node;
 }
-    | PAREN_OPEN expr PAREN_CLOSE {
-  spdlog::debug("[expr] parenthesis");
-
-  assert(parser_state);
-  auto& graph = parser_state->graph;
-  auto& node_to_func_args = parser_state->node_to_func_args;
-  auto& arc_to_names = parser_state->arc_to_names;
-
-  const auto node_ = $2;
-  const auto [type_, name_] = node_to_func_args[node_];
-
-  const auto node = graph.addNode();
-  node_to_func_args[node] = {type_, "PAR"};
-
-  const auto arc = graph.addArc(node, node_);
-  arc_to_names[arc] = "single";
-
-  $$ = node;
-}
-    | expr MUL expr {
+    | expr MUL expr
+{
   spdlog::debug("[expr] multiplication");
 
   assert(parser_state);
@@ -258,6 +246,26 @@ expr: IDENTIFIER {
   arc_to_names[aright] = "right";
 
   $$ = node;
+}
+    | PAREN_OPEN expr PAREN_CLOSE
+{
+spdlog::debug("[expr] parenthesis");
+
+assert(parser_state);
+auto& graph = parser_state->graph;
+auto& node_to_func_args = parser_state->node_to_func_args;
+auto& arc_to_names = parser_state->arc_to_names;
+
+const auto node_ = $2;
+const auto [type_, name_] = node_to_func_args[node_];
+
+const auto node = graph.addNode();
+node_to_func_args[node] = {type_, "PAR"};
+
+const auto arc = graph.addArc(node, node_);
+arc_to_names[arc] = "single";
+
+$$ = node;
 }
 
 func_proto: TYPE IDENTIFIER PAREN_OPEN func_args PAREN_CLOSE {
@@ -497,9 +505,8 @@ auto exprtree::run_parser(const std::string& source) -> std::unique_ptr<Payload>
 
   const auto parsing_err = pp();
 
-  spdlog::debug("[run_parser] parsing_err {} num_empty_declarations {} num_func_protos {}",
+  spdlog::debug("[run_parser] parsing_err {} num_func_protos {}",
     parsing_err,
-    parser_state->num_empty_declarations,
     parser_state->func_protos.size());
 
   for (const auto& [ident_id, data] : parser_state->func_protos) {

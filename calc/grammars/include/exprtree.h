@@ -34,7 +34,6 @@ struct Payload {
   Graph::Node ret_node = lemon::INVALID;
 
   FuncPrototypes func_protos = {};
-  size_t num_empty_declarations = 0;
 };
 
 std::string to_string(const TypeId type_id);
