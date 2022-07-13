@@ -226,10 +226,11 @@ vec2 coucou(vec2 aa, vec2 bb) {
   test_exprtree(R"(
 
 float length(vec2 xx);
-vec2 foo(float xx);
+vec2 foo(float xx, float yy);
 
-float coucou(vec2 aa, float bb) {
-  return length(aa * foo(bb)) + bb;
+float coucou(vec2 aa, float bb, float cc) {
+  vec2 dd = aa * foo(bb, cc);
+  return length(dd) + bb + cc;
 }
 
 )", std::make_tuple(3), "example01.dot");

@@ -273,7 +273,7 @@ expr: IDENTIFIER
     throw syntax_error("wrong number of arguments during call");
 
   const auto node = graph.addNode();
-  node_to_func_args[node] = {ret_type, "CALL"};
+  node_to_func_args[node] = {ret_type, fmt::format("CALL({})", $1)};
 
   auto iter = std::cbegin(args);
   for (const auto& node_ : $3) {
@@ -321,68 +321,6 @@ proto_extra_args: %empty { $$ = {}; }
                 | proto_extra_args COMMA proto_arg { $$ = $1; $$.emplace_back($3); }
 
 proto_arg: TYPE IDENTIFIER { $$ = std::make_tuple($1, $2); }
-
-/*result: expr {
-  parser_state.result_value = $1;
-  spdlog::debug("[result] value {}",
-    parser_state.result_value);
-}
-
-expr: func_call
-    | var_lookup
-
-var_lookup: VAR_LOOKUP {
-  const auto iter_scalar = parser_state.var_id_to_scalars.find($1);
-  if (iter_scalar == std::cend(parser_state.var_id_to_scalars))
-    throw syntax_error("unknown var");
-  assert(iter_scalar != std::cend(parser_state.var_id_to_scalars));
-  spdlog::debug("[var_lookup] id {} value {}",
-    $1,
-    iter_scalar->second);
-  $$ = iter_scalar->second;
-}
-
-func_call: FUNC_START func_args FUNC_END {
-  const auto iter_functor = parser_state.func_id_to_functors.find($1);
-  if (iter_functor == std::cend(parser_state.func_id_to_functors))
-    throw syntax_error("unknown func");
-  assert(iter_functor != std::cend(parser_state.func_id_to_functors));
-  spdlog::debug("[func_call] func {} args ({})",
-    $1,
-    fmt::join($2, ","));
-
-  const auto maybe_value = std::visit([&](auto&& ff) -> std::optional<Scalar> {
-    using T = std::decay_t<decltype(ff)>;
-    if constexpr (std::is_same<T, NullaryFunctor>::value) {
-      if ($2.size() == 0)
-        return ff();
-      return {};
-    } else if constexpr (std::is_same<T, UnaryFunctor>::value) {
-      if ($2.size() == 1)
-        return ff($2[0]);
-      return {};
-    } else if constexpr (std::is_same<T, BinaryFunctor>::value) {
-      if ($2.size() == 2)
-        return ff($2[0], $2[1]);
-      return {};
-    }
-    else
-      static_assert(always_false_v<T>, "non-exhaustive visitor!");
-    return true;
-  }, iter_functor->second);
-
-  if (!maybe_value)
-    throw syntax_error("wrong func call");
-
-  spdlog::debug("[func_call] value {}",
-    *maybe_value);
-
-  assert(maybe_value);
-  $$ = *maybe_value;
-}
-
-func_args: %empty { $$ = {}; }
-         | func_args expr { $$ = $1; $$.emplace_back($2); }*/
 
 %% /* Other definitions */
 
