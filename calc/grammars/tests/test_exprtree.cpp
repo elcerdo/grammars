@@ -58,11 +58,13 @@ void test_exprtree(
   const auto& node_to_func_args = ret->node_to_func_args;
   const auto& arc_to_names = ret->arc_to_names;
   const auto& ret_node = ret->ret_node;
+  const auto& func_protos = ret->func_protos;
 
-  spdlog::info("num_nodes {} num_arcs {} has_ret_node {}",
+  spdlog::info("num_nodes {} num_arcs {} has_ret_node {} num_func_protos {}",
     countNodes(graph),
     countArcs(graph),
-    graph.valid(ret_node));
+    graph.valid(ret_node),
+    func_protos.size());
 
   Graph::NodeMap<int> node_to_distances(graph, -1);
   if (graph.valid(ret_node)) {
@@ -72,7 +74,7 @@ void test_exprtree(
 
   for (NodeIt ni(graph); ni!=INVALID; ++ni) {
     const auto& [type, name] = node_to_func_args[ni];
-    spdlog::info("[run_parser] NN{:03d} dist {:2} type {} out {} in {} \"{}\"{}",
+    spdlog::info("NN{:03d} dist {:2} type {} out {} in {} \"{}\"{}",
       graph.id(ni),
       node_to_distances[ni],
       type,
@@ -220,5 +222,15 @@ vec2 coucou(vec2 aa, vec2 bb) {
   return cc + (aa * cc);
 }
 
-)", std::make_tuple(1), "foobar.dot");
+)", std::make_tuple(1), "example00.dot");
+  test_exprtree(R"(
+
+float length(vec2 xx);
+vec2 foo(float xx);
+
+float coucou(vec2 aa, float bb) {
+  return length(aa * foo(bb)) + bb;
+}
+
+)", std::make_tuple(3), "example01.dot");
 }

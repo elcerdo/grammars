@@ -10,24 +10,8 @@
 #include <exprtree.h>
 
 #include <spdlog/spdlog.h>
-// #include <spdlog/fmt/bundled/ranges.h>
 
 #include <regex>
-/*#include <vector>
-#include <functional>
-#include <unordered_map>
-#include <variant>*/
-
-template<class> inline constexpr bool always_false_v = false;
-
-/*using NullaryFunctor = std::function<Scalar()>;
-using UnaryFunctor = std::function<Scalar(Scalar)>;
-using BinaryFunctor = std::function<Scalar(Scalar, Scalar)>;
-using AnyFunctor = std::variant<NullaryFunctor, UnaryFunctor, BinaryFunctor>;
-
-using VarIdToScalars = std::unordered_map<VarId, Scalar>;
-using FuncIdToAnyFunctors = std::unordered_map<FuncId, AnyFunctor>; */
-
 
 using LexerState = std::unique_ptr<std::string>;
 
@@ -57,13 +41,12 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 %token FUNC_END
 %token<VarId> VAR_LOOKUP*/
 
-%nterm<FuncArg> func_arg
-%nterm<FuncArgs> func_args func_extra_args
-%nterm<IdentId> func_proto func_impl_open
+%nterm<FuncArg> proto_arg
+%nterm<FuncArgs> proto_args proto_extra_args
+%nterm<IdentId> proto impl_open
 %nterm<size_t> statements
-%nterm<Graph::Node> expr
-/*%nterm<Scalar> expr func_call var_lookup
-%nterm<std::vector<Scalar>> func_args */
+%nterm<Graph::Node> expr call_arg
+%nterm<std::list<Graph::Node>> call_args call_extra_args
 
 %start result
 
@@ -75,10 +58,10 @@ declarations: %empty
             | declarations declaration
 
 declaration: SEMICOLON
-           | func_proto SEMICOLON
-           | func_impl
+           | proto SEMICOLON
+           | impl
 
-func_impl: func_impl_open statements BRACKET_CLOSE
+impl: impl_open statements BRACKET_CLOSE
 {
   assert(parser_state);
   const auto& func_protos = parser_state->func_protos;
@@ -108,7 +91,7 @@ func_impl: func_impl_open statements BRACKET_CLOSE
     throw syntax_error("invalid return type");
 }
 
-func_impl_open: func_proto BRACKET_OPEN
+impl_open: proto BRACKET_OPEN
 {
   assert(parser_state);
   const auto& func_protos = parser_state->func_protos;
@@ -249,31 +232,75 @@ expr: IDENTIFIER
 }
     | PAREN_OPEN expr PAREN_CLOSE
 {
-spdlog::debug("[expr] parenthesis");
+  spdlog::debug("[expr] parenthesis");
 
-assert(parser_state);
-auto& graph = parser_state->graph;
-auto& node_to_func_args = parser_state->node_to_func_args;
-auto& arc_to_names = parser_state->arc_to_names;
+  assert(parser_state);
+  auto& graph = parser_state->graph;
+  auto& node_to_func_args = parser_state->node_to_func_args;
+  auto& arc_to_names = parser_state->arc_to_names;
 
-const auto node_ = $2;
-const auto [type_, name_] = node_to_func_args[node_];
+  const auto node_ = $2;
+  const auto [type_, name_] = node_to_func_args[node_];
 
-const auto node = graph.addNode();
-node_to_func_args[node] = {type_, "PAR"};
+  const auto node = graph.addNode();
+  node_to_func_args[node] = {type_, "PAR"};
 
-const auto arc = graph.addArc(node, node_);
-arc_to_names[arc] = "single";
+  const auto arc = graph.addArc(node, node_);
+  arc_to_names[arc] = "single";
 
-$$ = node;
+  $$ = node;
+}
+    | IDENTIFIER PAREN_OPEN call_args PAREN_CLOSE
+{
+  spdlog::debug("[expr] call identifier \"{}\" nargs {}",
+    $1,
+    $3.size());
+
+  assert(parser_state);
+  auto& graph = parser_state->graph;
+  auto& node_to_func_args = parser_state->node_to_func_args;
+  auto& arc_to_names = parser_state->arc_to_names;
+  const auto& func_protos = parser_state->func_protos;
+
+  const auto iter_proto = func_protos.find($1);
+  if (iter_proto == std::cend(func_protos))
+    throw syntax_error("call to unknown function");
+
+  assert(iter_proto != std::cend(func_protos));
+  const auto& [ret_type, args] = iter_proto->second;
+
+  if (args.size() != $3.size())
+    throw syntax_error("wrong number of arguments during call");
+
+  const auto node = graph.addNode();
+  node_to_func_args[node] = {ret_type, "CALL"};
+
+  auto iter = std::cbegin(args);
+  for (const auto& node_ : $3) {
+    assert(iter != std::cend(args));
+    const auto arc = graph.addArc(node, node_);
+    arc_to_names[arc] = std::get<1>(*iter);
+    iter++;
+  }
+
+  $$ = node;
 }
 
-func_proto: TYPE IDENTIFIER PAREN_OPEN func_args PAREN_CLOSE {
+call_args: %empty { $$ = {}; }
+         | call_arg call_extra_args { $$ = $2; $$.emplace_front($1); }
+
+call_extra_args: %empty { $$ = {}; }
+               | call_extra_args COMMA call_arg { $$ = $1; $$.emplace_back($3); }
+
+call_arg: expr
+
+proto: TYPE IDENTIFIER PAREN_OPEN proto_args PAREN_CLOSE
+{
   std::vector<std::string> func_args_;
-  for (const auto& func_arg : $4)
+  for (const auto& [arg_type, arg_name] : $4)
     func_args_.emplace_back(fmt::format("({},{})",
-      std::get<0>(func_arg),
-      std::get<1>(func_arg)));
+      arg_type,
+      arg_name));
   spdlog::debug("[func_proto] type {} identifier \"{}\" args [{}]",
     $1,
     $2,
@@ -287,13 +314,13 @@ func_proto: TYPE IDENTIFIER PAREN_OPEN func_args PAREN_CLOSE {
   $$ = $2;
 }
 
-func_args: %empty { $$ = {}; }
-         | func_arg func_extra_args { $$ = $2; $$.emplace_front($1); }
+proto_args: %empty { $$ = {}; }
+          | proto_arg proto_extra_args { $$ = $2; $$.emplace_front($1); }
 
-func_extra_args: %empty { $$ = {}; }
-               | func_extra_args COMMA func_arg { $$ = $1; $$.emplace_back($3); }
+proto_extra_args: %empty { $$ = {}; }
+                | proto_extra_args COMMA proto_arg { $$ = $1; $$.emplace_back($3); }
 
-func_arg: TYPE IDENTIFIER { $$ = std::make_tuple($1, $2); }
+proto_arg: TYPE IDENTIFIER { $$ = std::make_tuple($1, $2); }
 
 /*result: expr {
   parser_state.result_value = $1;
