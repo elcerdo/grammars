@@ -1,7 +1,7 @@
 include(spdlog)
 include(nlohmann_json)
 include(lemon)
-find_package(BISON 3.2)
+include(bison)
 
 bison_target(fblist_parser
   src/fblist.yy
