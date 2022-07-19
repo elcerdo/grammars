@@ -7,15 +7,15 @@
 template<typename Item>
 struct WrapperBase {
   using RawItem = Item*;
-  using AllocItem = std::function<RawItem(void)>;
   using DeallocItem = std::function<void(RawItem)>;
   using MaybeItem = std::unique_ptr<Item, DeallocItem>;
 
+  using AllocItem = std::function<RawItem(void)>;
+
   WrapperBase() {
-    const auto foo = static_cast<DeallocItem>(Item::dealloc);
-    const auto bar = static_cast<AllocItem>(Item::alloc);
-    RawItem xx = bar();
-    maybe_item = MaybeItem(xx, foo);
+    const auto aa = static_cast<AllocItem>(Item::alloc);
+    const auto bb = static_cast<DeallocItem>(Item::dealloc);
+    maybe_item = MaybeItem(aa(), bb);
   }
 
   MaybeItem maybe_item = nullptr;
