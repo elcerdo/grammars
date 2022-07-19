@@ -2,6 +2,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include <optional>
+
 namespace assembly {
 
 enum struct FuncId {

@@ -29,9 +29,7 @@ using VarIdToScalars = std::unordered_map<VarId, Scalar>;
 using FuncIdToAnyFunctors = std::unordered_map<FuncId, AnyFunctor>; */
 
 
-struct LexerState {
-  std::string current; // FIXME may get away with only using iterators
-};
+using LexerState = std::unique_ptr<std::string>;
 
 using ParserState = std::unique_ptr<exprtree::Payload>;
 
@@ -51,7 +49,9 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 
 %token END 0
 %token<TypeId> TYPE
-%token SEP PAREN_OPEN COMMA PAREN_CLOSE SEMICOLON SCOPE_OPEN SCOPE_CLOSE RETURN PLUS EQUAL
+%token PAREN_OPEN COMMA PAREN_CLOSE SEMICOLON BRACKET_OPEN BRACKET_CLOSE RETURN EQUAL
+%left PLUS
+%left MUL
 %token<IdentId> IDENTIFIER
 /* %token<FuncId> FUNC_START
 %token FUNC_END
@@ -59,8 +59,9 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 
 %nterm<FuncArg> func_arg
 %nterm<FuncArgs> func_args func_extra_args
-%nterm<IdentId> func_proto
+%nterm<IdentId> func_proto scope_open
 %nterm<size_t> statements
+%nterm<Graph::Node> expr
 /*%nterm<Scalar> expr func_call var_lookup
 %nterm<std::vector<Scalar>> func_args */
 
@@ -68,60 +69,223 @@ using ParserState = std::unique_ptr<exprtree::Payload>;
 
 %% /* Grammar rules and actions follow */
 
-skip: %empty
-    | SEP
-
-result: declarations skip
+result: declarations
 
 declarations: %empty
-            | declarations skip declaration
+            | declarations declaration
 
 declaration: SEMICOLON { assert(parser_state); parser_state->num_empty_declarations++; }
-           | func_proto skip SEMICOLON
+           | func_proto SEMICOLON
            | func_impl
 
-func_impl: func_proto skip SCOPE_OPEN statements skip SCOPE_CLOSE {
-  spdlog::debug("[func_impl] identifier \"{}\" num_statements {} !!!",
+func_impl: scope_open statements BRACKET_CLOSE {
+  assert(parser_state);
+  const auto& func_protos = parser_state->func_protos;
+  const auto& graph = parser_state->graph;
+  const auto& node_to_func_args = parser_state->node_to_func_args;
+  const auto& ret_node = parser_state->ret_node;
+
+  spdlog::debug("[func_impl] identifier \"{}\" num_statements {} has_ret_node {}",
     $1,
-    $4);
+    $2,
+    graph.valid(ret_node));
+
+  if (!graph.valid(ret_node))
+    throw syntax_error("invalid ret node");
+
+  const auto iter_proto = func_protos.find($1);
+  if (iter_proto == std::cend(func_protos))
+    throw syntax_error("unknown prototype");
+
+  assert(iter_proto != std::cend(func_protos));
+  const auto& [ret_type, args] = iter_proto->second;
+
+  assert(graph.valid(ret_node));
+  const auto& [ret_type_, ret_name] = node_to_func_args[ret_node];
+
+  if (ret_type_ != ret_type)
+    throw syntax_error("invalid return type");
+}
+
+scope_open: func_proto BRACKET_OPEN {
+  assert(parser_state);
+  const auto& func_protos = parser_state->func_protos;
+  auto& graph = parser_state->graph;
+  auto& node_to_func_args = parser_state->node_to_func_args;
+  auto& ret_node = parser_state->ret_node;
+  auto& defined_vars = parser_state->defined_vars;
+
+  spdlog::debug("[scope_open] identifier \"{}\"", $1);
+
+  const auto iter_proto = func_protos.find($1);
+  if (iter_proto == std::cend(func_protos))
+    throw syntax_error("unknown prototype");
+
+  assert(iter_proto != std::cend(func_protos));
+  const auto& [ret_type, args] = iter_proto->second;
+
+  spdlog::debug("[scope_open] ret_type {} nargs {}",
+    ret_type,
+    args.size());
+
+  graph.clear();
+  defined_vars.clear();
+  ret_node = lemon::INVALID;
+
+  for (const auto& arg : args) {
+    const auto node = graph.addNode();
+    node_to_func_args[node] = arg;
+    const auto ret = defined_vars.emplace(std::get<1>(arg), node);
+    assert(std::get<1>(ret));
+  }
+
+  $$ = $1;
 }
 
 statements: %empty { $$ = 0; }
-          | statements skip statement { $$ = $1; $$++; }
+          | statements statement { $$ = $1; $$++; }
 
 statement: SEMICOLON
-         | RETURN SEP expr skip SEMICOLON
-         | TYPE SEP IDENTIFIER skip EQUAL skip expr skip SEMICOLON
+         | RETURN expr SEMICOLON {
+  assert(parser_state);
+  const auto& graph = parser_state->graph;
+  auto& ret_node = parser_state->ret_node;
 
-expr: IDENTIFIER { spdlog::debug("[expr] var_lookup \"{}\"", $1); }
-    | expr skip PLUS skip expr { spdlog::debug("[expr] addition"); }
+  if (graph.valid(ret_node))
+    throw syntax_error("multiple return");
 
-func_proto: TYPE SEP IDENTIFIER skip PAREN_OPEN skip func_args PAREN_CLOSE {
+  ret_node = $2;
+}
+         | TYPE IDENTIFIER EQUAL expr SEMICOLON {
+  assert(parser_state);
+  auto& defined_vars = parser_state->defined_vars;
+
+  const auto iter_var = defined_vars.find($2);
+  if (iter_var != std::cend(defined_vars))
+    throw syntax_error("variable already defined");
+
+  const auto ret = defined_vars.emplace($2, $4);
+  assert(std::get<1>(ret));
+}
+
+expr: IDENTIFIER {
+  spdlog::debug("[expr] var_lookup \"{}\"", $1);
+
+  assert(parser_state);
+  const auto& graph = parser_state->graph;
+  const auto& node_to_func_args = parser_state->node_to_func_args;
+  const auto& defined_vars = parser_state->defined_vars;
+
+  const auto iter_var = defined_vars.find($1);
+  if (iter_var == std::cend(defined_vars))
+    throw syntax_error("unknown variable");
+
+  assert(iter_var != std::cend(defined_vars));
+  const auto node = iter_var->second;
+  assert(graph.valid(node));
+
+  $$ = node;
+}
+    | expr PLUS expr {
+  spdlog::debug("[expr] addition");
+
+  assert(parser_state);
+  auto& graph = parser_state->graph;
+  auto& node_to_func_args = parser_state->node_to_func_args;
+  auto& arc_to_names = parser_state->arc_to_names;
+
+  const auto nleft = $1;
+  const auto nright = $3;
+  const auto [left_type, left_name] = node_to_func_args[nleft];
+  const auto [right_type, right_name] = node_to_func_args[nright];
+
+  if (left_type != right_type)
+    throw syntax_error("mismatching add types");
+
+  assert(left_type == right_type);
+  const auto node = graph.addNode();
+  node_to_func_args[node] = {left_type, "ADD"};
+
+  const auto aleft = graph.addArc(node, nleft);
+  const auto aright = graph.addArc(node, nright);
+  arc_to_names[aleft] = "left";
+  arc_to_names[aright] = "right";
+
+  $$ = node;
+}
+    | PAREN_OPEN expr PAREN_CLOSE {
+  spdlog::debug("[expr] parenthesis");
+
+  assert(parser_state);
+  auto& graph = parser_state->graph;
+  auto& node_to_func_args = parser_state->node_to_func_args;
+  auto& arc_to_names = parser_state->arc_to_names;
+
+  const auto node_ = $2;
+  const auto [type_, name_] = node_to_func_args[node_];
+
+  const auto node = graph.addNode();
+  node_to_func_args[node] = {type_, "PAR"};
+
+  const auto arc = graph.addArc(node, node_);
+  arc_to_names[arc] = "sin";
+
+  $$ = node;
+}
+    | expr MUL expr {
+  spdlog::debug("[expr] multiplication");
+
+  assert(parser_state);
+  auto& graph = parser_state->graph;
+  auto& node_to_func_args = parser_state->node_to_func_args;
+  auto& arc_to_names = parser_state->arc_to_names;
+
+  const auto nleft = $1;
+  const auto nright = $3;
+  const auto [left_type, left_name] = node_to_func_args[nleft];
+  const auto [right_type, right_name] = node_to_func_args[nright];
+
+  if (left_type != right_type)
+    throw syntax_error("mismatching mul types");
+
+  assert(left_type == right_type);
+  const auto node = graph.addNode();
+  node_to_func_args[node] = {left_type, "MUL"};
+
+  const auto aleft = graph.addArc(node, nleft);
+  const auto aright = graph.addArc(node, nright);
+  arc_to_names[aleft] = "left";
+  arc_to_names[aright] = "right";
+
+  $$ = node;
+}
+
+func_proto: TYPE IDENTIFIER PAREN_OPEN func_args PAREN_CLOSE {
   std::vector<std::string> func_args_;
-  for (const auto& func_arg : $7)
+  for (const auto& func_arg : $4)
     func_args_.emplace_back(fmt::format("({},{})",
       std::get<0>(func_arg),
       std::get<1>(func_arg)));
   spdlog::debug("[func_proto] type {} identifier \"{}\" args [{}]",
     $1,
-    $3,
+    $2,
     fmt::join(func_args_, ", "));
 
   assert(parser_state);
-  const auto ret = parser_state->func_protos.emplace($3, std::make_tuple($1, $7));
+  const auto ret = parser_state->func_protos.emplace($2, std::make_tuple($1, $4));
   if (!std::get<1>(ret))
     throw syntax_error("function already defined");
 
-  $$ = $3;
+  $$ = $2;
 }
 
 func_args: %empty { $$ = {}; }
-         | func_arg func_extra_args skip { $$ = $2; $$.emplace_front($1); }
+         | func_arg func_extra_args { $$ = $2; $$.emplace_front($1); }
 
 func_extra_args: %empty { $$ = {}; }
-               | func_extra_args skip COMMA skip func_arg { $$ = $1; $$.emplace_back($5); }
+               | func_extra_args COMMA func_arg { $$ = $1; $$.emplace_back($3); }
 
-func_arg: TYPE SEP IDENTIFIER { $$ = std::make_tuple($1, $3); }
+func_arg: TYPE IDENTIFIER { $$ = std::make_tuple($1, $2); }
 
 /*result: expr {
   parser_state.result_value = $1;
@@ -189,7 +353,8 @@ func_args: %empty { $$ = {}; }
 
 exprtree::Payload::Payload()
   : graph()
-  , foobar(graph)
+  , node_to_func_args(graph)
+  , arc_to_names(graph)
 {
 }
 
@@ -203,42 +368,51 @@ constexpr size_t shash(char const * ii)
 
 auto exprtree::yylex(LexerState& lex_state) -> parser::symbol_type
 {
-  const auto current = lex_state.current;
-  const auto advance_match = [&lex_state, &current](const std::smatch& match) -> void {
-    lex_state.current = match.suffix().str();
+  assert(lex_state);
+
+  { // skip separators
+    static const std::regex re_skip("^ +");
+    const auto current = *lex_state;
+    *lex_state = std::regex_replace(current, re_skip, "");
+    spdlog::trace("   [skip] \"{}\" -> \"{}\"",
+      current,
+      *lex_state);
+  }
+
+  const auto advance_match = [&lex_state](const std::smatch& match) -> void {
+    const auto current = *lex_state;
+    *lex_state = match.suffix().str();
     spdlog::trace("[advance] \"{}\" -> \"{}\"",
       current,
-      lex_state.current);
+      *lex_state);
   };
-  const auto advance_tick = [&lex_state, &current](const size_t nn) -> void {
-    lex_state.current.erase(0, nn);
+  const auto advance_tick = [&lex_state](const size_t nn) -> void {
+    const auto current = *lex_state;
+    lex_state->erase(0, nn);
     spdlog::trace("[advance] \"{}\" -> \"{}\"",
       current,
-      lex_state.current);
+      *lex_state);
     assert(nn > 0);
   };
 
-  if (!current.empty()) { // single character
+  const auto current = *lex_state;
+
+  if (current.empty())
+    return parser::make_END();
+
+  { // single character
     const auto letter = current[0];
     switch (letter) {
       case '(': advance_tick(1); return parser::make_PAREN_OPEN();
       case ',': advance_tick(1); return parser::make_COMMA();
       case ')': advance_tick(1); return parser::make_PAREN_CLOSE();
       case ';': advance_tick(1); return parser::make_SEMICOLON();
-      case '{': advance_tick(1); return parser::make_SCOPE_OPEN();
-      case '}': advance_tick(1); return parser::make_SCOPE_CLOSE();
+      case '{': advance_tick(1); return parser::make_BRACKET_OPEN();
+      case '}': advance_tick(1); return parser::make_BRACKET_CLOSE();
       case '+': advance_tick(1); return parser::make_PLUS();
       case '=': advance_tick(1); return parser::make_EQUAL();
+      case '*': advance_tick(1); return parser::make_MUL();
       default: break;
-    }
-  }
-
-  { // separator
-    static const std::regex re("^[ \n]+");
-    std::smatch match;
-    if (std::regex_search(current, match, re)) {
-      advance_match(match);
-      return parser::make_SEP();
     }
   }
 
@@ -291,12 +465,12 @@ auto exprtree::parser::error(const std::string& msg) -> void
 
 auto exprtree::run_parser(const std::string& source) -> std::unique_ptr<Payload>
 {
-  LexerState lex_state {
-    source,
-  };
+  static const std::regex re_clean("[\r\t\n]");
+  auto lex_state = std::make_unique<std::string>(std::regex_replace(source, re_clean, " "));
 
   auto parser_state = std::make_unique<Payload>();
   assert(parser_state);
+  assert(lex_state);
 
   /*parser_state.var_id_to_scalars["xx"] = xx_value;
   parser_state.func_id_to_functors[FuncId::Zero] = []() -> Scalar { return 0; };
@@ -305,18 +479,20 @@ auto exprtree::run_parser(const std::string& source) -> std::unique_ptr<Payload>
   parser_state.func_id_to_functors[FuncId::MinusOne] = [](const Scalar xx) -> Scalar { return xx - 1; };
   parser_state.func_id_to_functors[FuncId::Add] = [](const Scalar xx, const Scalar yy) -> Scalar { return xx + yy; };*/
 
-  exprtree::parser parser(lex_state, parser_state);
+  parser pp(lex_state, parser_state);
 
 #if YYDEBUG
-  parser.set_debug_stream(std::cout);
-  parser.set_debug_level(1);
+  pp.set_debug_stream(std::cout);
+  pp.set_debug_level(1);
 #endif
 
-  const auto parsing_err = parser();
+  const auto parsing_err = pp();
+
   spdlog::debug("[run_parser] parsing_err {} num_empty_declarations {} num_func_protos {}",
     parsing_err,
     parser_state->num_empty_declarations,
     parser_state->func_protos.size());
+
   for (const auto& [ident_id, data] : parser_state->func_protos) {
     const auto& [ret_type_id, func_args] = data;
     std::vector<std::string> foo;
@@ -326,6 +502,38 @@ auto exprtree::run_parser(const std::string& source) -> std::unique_ptr<Payload>
       ret_type_id,
       ident_id,
       fmt::join(foo, ", "));
+  }
+
+  { // dump graph
+    using NodeIt = Graph::NodeIt;
+    using ArcIt = Graph::ArcIt;
+    using namespace lemon;
+
+    assert(parser_state);
+    const auto& graph = parser_state->graph;
+    const auto& node_to_func_args = parser_state->node_to_func_args;
+    const auto& arc_to_names = parser_state->arc_to_names;
+
+    spdlog::debug("[run_parser] num_nodes {} num_arcs {}",
+      countNodes(graph),
+      countArcs(graph));
+
+    for (NodeIt ni(graph); ni!=INVALID; ++ni) {
+      const auto& [type, name] = node_to_func_args[ni];
+      spdlog::debug("[run_parser] NN{:03d} {} \"{}\"",
+        graph.id(ni),
+        type,
+        name);
+    }
+
+    for (ArcIt ai(graph); ai!=INVALID; ++ai) {
+      const auto& name = arc_to_names[ai];
+      spdlog::debug("[run_parser] AA{:03d} NN{:03d} -> NN{:03d} \"{}\"",
+        graph.id(ai),
+        graph.id(graph.source(ai)),
+        graph.id(graph.target(ai)),
+        name);
+    }
   }
 
   if (parsing_err) return {};

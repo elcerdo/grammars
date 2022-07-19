@@ -13,6 +13,7 @@
 #include <spdlog/fmt/bundled/ranges.h>
 
 #include <vector>
+#include <list>
 #include <functional>
 #include <unordered_map>
 #include <variant>
@@ -32,13 +33,12 @@ using VarIdToScalars = std::unordered_map<VarId, Scalar>;
 using FuncIdToAnyFunctors = std::unordered_map<FuncId, AnyFunctor>;
 
 struct LexerState {
-  using Container = std::vector<nlohmann::json>;
-  Container::const_iterator input_current;
-  const Container::const_iterator input_end;
+  using Container = std::list<nlohmann::json>;
+  Container opcodes;
 };
 
 struct ParserState {
-  float result_value;
+  Scalar result_value;
   VarIdToScalars var_id_to_scalars;
   FuncIdToAnyFunctors func_id_to_functors;
 };
@@ -148,10 +148,11 @@ constexpr size_t shash(char const * ii)
 
 auto assembly::yylex(LexerState& lex_state) -> parser::symbol_type
 {
-  if (lex_state.input_current >= lex_state.input_end)
+  if (lex_state.opcodes.empty())
     return parser::make_END();
 
-  const auto& current = *lex_state.input_current++;
+  const nlohmann::json current = lex_state.opcodes.front();
+  lex_state.opcodes.pop_front();
 
   constexpr auto func_start_hash = shash("func_start");
   constexpr auto func_end_hash = shash("func_end");
@@ -176,17 +177,15 @@ auto assembly::parser::error(const std::string& msg) -> void
   spdlog::debug("[parser_error] {}", msg);
 }
 
-auto assembly::run_parser(const nlohmann::json& jj, const float xx_value) -> std::optional<float>
+auto assembly::run_parser(const nlohmann::json& jj, const Scalar xx_value) -> std::optional<Scalar>
 {
   if (!jj.is_array())
     return {};
 
-  const auto kk = jj.get<LexerState::Container>();
-  spdlog::debug("[run_parser] num_opcodes {}", kk.size());
   LexerState lex_state {
-    std::cbegin(kk),
-    std::cend(kk),
+    jj.get<LexerState::Container>(),
   };
+  spdlog::debug("[run_parser] num_opcodes {}", lex_state.opcodes.size());
 
   ParserState parser_state;
   parser_state.var_id_to_scalars["xx"] = xx_value;
@@ -203,13 +202,15 @@ auto assembly::run_parser(const nlohmann::json& jj, const float xx_value) -> std
   parser.set_debug_level(1);
 #endif
 
+  std::optional<Scalar> ret;
+
   try {
     const auto parsing_err = parser();
     spdlog::debug("[run_parser] parsing_err {}", parsing_err);
-    if (parsing_err) return {};
-    return parser_state.result_value;
+    if (!parsing_err) ret = parser_state.result_value;
   } catch (nlohmann::json::exception& exc) {
     spdlog::debug("[json_error] {}", exc.what());
-    return {};
   }
+
+  return ret;
 }
