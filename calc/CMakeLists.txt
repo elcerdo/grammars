@@ -9,3 +9,4 @@ include(catch2)
 enable_testing()
 
 add_subdirectory(grammars)
+add_subdirectory(wrappers/tests)
